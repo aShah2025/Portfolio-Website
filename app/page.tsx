@@ -33,10 +33,10 @@ const projects = [
 ];
 
 const skillNotes: Record<string, string> = {
-  web: "i make websites that feel like someone cared.",
-  ai: "i use ai when it solves the problem — not just to say i used ai.",
-  hardware: "sensors, servos, wires, and eventually fewer loose screws.",
-  cad: "if it needs to exist in real life, i’ll probably try to print it.",
+  web: "I build fast, thoughtful websites with details worth noticing.",
+  ai: "I use AI to make products more useful, intuitive, and capable.",
+  hardware: "Sensors, servos, circuits, and the challenge of making code move something real.",
+  cad: "I design parts, prototype them, print them, and learn from every version.",
 };
 
 export default function Home() {
@@ -51,6 +51,16 @@ export default function Home() {
     updateTime();
     const timer = window.setInterval(updateTime, 30000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add("in-view")),
+      { threshold: 0.14 },
+    );
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
   }, []);
 
   const trackPointer = (event: React.PointerEvent<HTMLElement>) => {
@@ -77,22 +87,22 @@ export default function Home() {
           <span>14 · san jose</span>
           <span className="available"><i /> currently making something</span>
         </div>
-        <h1>i make stuff.<br /><span>sometimes it works.</span></h1>
+        <h1><span className="hero-line">i turn ideas</span><br /><span className="hero-line outline-line">into real things.</span></h1>
         <div className="hero-foot">
-          <p>hey, i’m aaditya. i build apps, websites, and increasingly unnecessary robots.</p>
-          <a href="#work">see the stuff <span>↓</span></a>
+          <p>Hey, I’m Aaditya. I build apps, websites, and robots while learning how ideas become products people can actually use.</p>
+          <a href="#work">explore my work <span>↓</span></a>
         </div>
         <div className="loose-note note-one" aria-hidden="true">freshman @ leland</div>
-        <div className="loose-note note-two" aria-hidden="true">probably debugging</div>
+        <div className="loose-note note-two" aria-hidden="true">building &gt; talking</div>
       </section>
 
       <section className="ticker" aria-label="currently">
         <span>right now</span>
-        <div><p>learning cad</p><i /> <p>building a weird plant</p><i /> <p>joining quixilver 604</p><i /> <p>starting a tiny web studio</p></div>
+        <div><p>learning cad</p><i /> <p>prototyping a robotic plant</p><i /> <p>joining quixilver 604</p><i /> <p>starting a web studio</p></div>
       </section>
 
       <section className="work section" id="work">
-        <div className="section-intro">
+        <div className="section-intro" data-reveal>
           <p className="kicker">01 / things that exist</p>
           <h2>some work.</h2>
           <p className="aside-copy">click one. there’s more under the surface.</p>
@@ -102,7 +112,7 @@ export default function Home() {
           {projects.map((project, index) => {
             const isOpen = openProject === project.id;
             return (
-              <article className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
+              <article className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color, "--delay": `${index * 90}ms` } as React.CSSProperties} data-reveal>
                 <button type="button" onClick={() => setOpenProject(isOpen ? null : project.id)} aria-expanded={isOpen} aria-controls={`${project.id}-details`}>
                   <span className="project-number">0{index + 1}</span>
                   <span className="project-title"><b>{project.name}</b><em>{project.oneLiner}</em></span>
@@ -117,7 +127,7 @@ export default function Home() {
                   <div className="project-info">
                     <p>{project.description}</p>
                     <ul>{project.tools.map((tool) => <li key={tool}>{tool}</li>)}</ul>
-                    <span>still improving it, obviously.</span>
+                    <span>built, tested, and still evolving.</span>
                   </div>
                 </div>
               </article>
@@ -127,11 +137,11 @@ export default function Home() {
       </section>
 
       <section className="lab section" id="lab">
-        <div className="lab-copy">
+        <div className="lab-copy" data-reveal>
           <p className="kicker">02 / currently overengineering</p>
-          <h2>the plant<br />pot thing.</h2>
+          <h2>the robotic<br />plant.</h2>
           <p>A 3D-printed pot. Servo-powered TPU leaves. A proximity sensor. Wave your hand and it sways like there’s wind.</p>
-          <button type="button" onClick={() => setPlantAwake((value) => !value)}>{plantAwake ? "okay, calm down" : "test the sensor"}</button>
+          <button type="button" onClick={() => setPlantAwake((value) => !value)}>{plantAwake ? "reset sensor" : "test the sensor"}</button>
         </div>
         <div
           className={`plant-demo ${plantAwake ? "is-awake" : ""}`}
@@ -139,6 +149,7 @@ export default function Home() {
           onPointerLeave={() => setPlantAwake(false)}
           role="img"
           aria-label="Interactive prototype of a robotic plant pot. Hover or tap the test sensor button to make its leaves sway."
+          data-reveal
         >
           <span className="sensor-zone">wave here</span>
           <div className="plant">
@@ -153,13 +164,13 @@ export default function Home() {
       </section>
 
       <section className="about section" id="about">
-        <div>
+        <div data-reveal>
           <p className="kicker">03 / about, briefly</p>
-          <h2>i’m early.<br />that’s useful.</h2>
+          <h2>just getting<br />started.</h2>
         </div>
-        <div className="about-copy">
-          <p>I’m a freshman at Leland High School. I like projects that force me to learn whatever I don’t know yet.</p>
-          <p>Right now that’s product design, web development, AI, CAD, 3D printing, and robotics. Ask again in a year.</p>
+        <div className="about-copy" data-reveal>
+          <p>I’m a 14-year-old freshman at Leland High School. I like ambitious projects that push me to learn whatever the next step requires.</p>
+          <p>Right now that means product design, web development, AI, CAD, 3D printing, and robotics. I’m excited to see where those skills lead.</p>
           <div className="skill-switcher" role="group" aria-label="skills">
             {Object.keys(skillNotes).map((item) => (
               <button key={item} className={skill === item ? "active" : ""} onClick={() => setSkill(item)} type="button">{item}</button>
@@ -172,14 +183,14 @@ export default function Home() {
       <section className="next section">
         <p className="kicker">also in progress</p>
         <div className="next-grid">
-          <article><span>01</span><h3>small-business websites</h3><p>good sites for local people who are busy running actual businesses.</p></article>
-          <article><span>02</span><h3>quixilver 604</h3><p>moving from “i should get into robotics” to actually doing it.</p></article>
+          <article data-reveal><span>01</span><h3>small-business websites</h3><p>Thoughtful, modern websites for local businesses ready to stand out online.</p></article>
+          <article data-reveal><span>02</span><h3>quixilver 604</h3><p>Taking my next step into competitive robotics with Leland’s FRC team.</p></article>
         </div>
       </section>
 
       <section className="contact section">
-        <p>anyway, that’s the site.</p>
-        <h2>want to see<br />what i build next?</h2>
+        <p>the next idea is already in progress.</p>
+        <h2>follow what<br />i build next.</h2>
         <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">github.com/aShah2025 <span>↗</span></a>
       </section>
 
