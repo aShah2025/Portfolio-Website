@@ -15,10 +15,10 @@ const projects = [
   {
     id: "wayfinder",
     name: "wayfinder",
-    oneLiner: "AI-powered navigation for iOS.",
-    description: "An iOS navigation app that uses AI to turn a destination into a clear route and useful next step.",
-    tools: ["iOS", "AI", "navigation"],
-    aside: "built to reduce friction",
+    oneLiner: "bike routes that actually listen to you.",
+    description: "Google Maps does not always give cyclists enough control over the route. Wayfinder lets you describe the ride you want and add filters like “avoid highways” or “prioritize safer streets,” then uses the Valhalla routing API to build a route around those choices.",
+    tools: ["iOS", "Valhalla API", "AI routing"],
+    aside: "custom bike routing",
     color: "#3155ff",
   },
   {
@@ -132,7 +132,7 @@ export default function Home() {
                     <div className="phone phone-back">
                       <div className="dynamic-island" />
                       {index === 0 && <div className="kura-screen"><small>today</small><b>1,842</b><span>of 2,200 kcal</span><i /><ul><li>protein <em>112g</em></li><li>carbs <em>204g</em></li><li>fat <em>58g</em></li></ul></div>}
-                      {index === 1 && <div className="wayfinder-screen"><small>wayfinder</small><div className="mini-map"><i /><i /><i /><span /></div><b>12 min</b><span>best route found</span></div>}
+                      {index === 1 && <div className="wayfinder-screen"><small>describe your ride</small><div className="route-prompt">Safer bike route. Avoid highways.</div><div className="route-filters"><span>safer streets</span><span>no highways</span></div><div className="mini-map"><i /><i /><i /><span /></div><b>18 min</b><span>Valhalla route</span></div>}
                       {index === 2 && <div className="refill-screen"><small>nearby resources</small><b>12 items</b><ul><li><i /> notebooks <em>24</em></li><li><i /> markers <em>8</em></li><li><i /> folders <em>16</em></li></ul></div>}
                     </div>
                     <div className="phone phone-front"><div className="dynamic-island" /><span className="app-mark">{project.name.slice(0, 1)}</span><b>{project.name}</b><small>iOS app</small></div>
