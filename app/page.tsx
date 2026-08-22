@@ -6,27 +6,27 @@ const projects = [
   {
     id: "kura",
     name: "kura",
-    oneLiner: "calories, minus the spreadsheet energy.",
-    description: "A simple calorie and macro tracker I made for CAC 2025. It keeps the useful numbers visible without making food feel like homework.",
-    tools: ["product", "frontend", "health"],
+    oneLiner: "an iOS calorie and macro tracker.",
+    description: "An iOS app I made for CAC 2025 that keeps calories and macros clear, quick, and easy to check throughout the day.",
+    tools: ["iOS", "product design", "health"],
     aside: "made for cac 2025",
     color: "#ff583d",
   },
   {
     id: "wayfinder",
     name: "wayfinder",
-    oneLiner: "an ai that helps you figure out where to go.",
-    description: "A navigation tool that uses AI to turn an unclear destination into a useful next step. Less tab-switching, more actually getting there.",
-    tools: ["ai", "ux", "navigation"],
+    oneLiner: "AI-powered navigation for iOS.",
+    description: "An iOS navigation app that uses AI to turn a destination into a clear route and useful next step.",
+    tools: ["iOS", "AI", "navigation"],
     aside: "built to reduce friction",
     color: "#3155ff",
   },
   {
     id: "refill",
     name: "refill",
-    oneLiner: "teachers need supplies. someone nearby has them.",
-    description: "A resource-sharing app that connects teachers with classroom supplies, because educators should not have to keep paying out of pocket.",
-    tools: ["community", "web", "education"],
+    oneLiner: "an iOS resource network for teachers.",
+    description: "An iOS app that connects teachers with nearby classroom supplies, so educators can find what they need without paying out of pocket.",
+    tools: ["iOS", "community", "education"],
     aside: "resources, redistributed",
     color: "#c5ee34",
   },
@@ -35,12 +35,13 @@ const projects = [
 const skillNotes: Record<string, string> = {
   web: "I build fast, thoughtful websites with details worth noticing.",
   ai: "I use AI to make products more useful, intuitive, and capable.",
-  hardware: "Sensors, servos, circuits, and the challenge of making code move something real.",
+  robotics: "I’m new to hardware. The robotic plant is how I want to start learning sensors, servos, and physical prototyping.",
   cad: "I design parts, prototype them, print them, and learn from every version.",
 };
 
 export default function Home() {
   const pageRef = useRef<HTMLElement>(null);
+  const plantRef = useRef<HTMLDivElement>(null);
   const [openProject, setOpenProject] = useState<string | null>(null);
   const [skill, setSkill] = useState("web");
   const [plantAwake, setPlantAwake] = useState(false);
@@ -68,6 +69,14 @@ export default function Home() {
     pageRef.current?.style.setProperty("--pointer-y", `${event.clientY}px`);
   };
 
+  const movePlant = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const wind = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    plantRef.current?.style.setProperty("--wind", wind.toFixed(2));
+    plantRef.current?.style.setProperty("--wind-angle", `${(wind * 3).toFixed(1)}deg`);
+    setPlantAwake(true);
+  };
+
   return (
     <main ref={pageRef} onPointerMove={trackPointer}>
       <div className="cursor-glow" aria-hidden="true" />
@@ -89,7 +98,7 @@ export default function Home() {
         </div>
         <h1><span className="hero-line">i turn ideas</span><br /><span className="hero-line outline-line">into real things.</span></h1>
         <div className="hero-foot">
-          <p>Hey, I’m Aaditya. I build apps, websites, and robots while learning how ideas become products people can actually use.</p>
+          <p>Hey, I’m Aaditya. I build iOS apps, websites, and whatever I’m curious enough to learn next.</p>
           <a href="#work">explore my work <span>↓</span></a>
         </div>
         <div className="loose-note note-one" aria-hidden="true">freshman @ leland</div>
@@ -112,17 +121,23 @@ export default function Home() {
           {projects.map((project, index) => {
             const isOpen = openProject === project.id;
             return (
-              <article className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color, "--delay": `${index * 90}ms` } as React.CSSProperties} data-reveal>
+              <article className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
                 <button type="button" onClick={() => setOpenProject(isOpen ? null : project.id)} aria-expanded={isOpen} aria-controls={`${project.id}-details`}>
                   <span className="project-number">0{index + 1}</span>
                   <span className="project-title"><b>{project.name}</b><em>{project.oneLiner}</em></span>
                   <span className="project-action">{isOpen ? "close" : "open"} <i>{isOpen ? "−" : "+"}</i></span>
                 </button>
                 <div className="project-details" id={`${project.id}-details`} aria-hidden={!isOpen}>
-                  <div className="project-poster" aria-hidden="true">
-                    <span>{project.name.slice(0, 1)}</span>
-                    <div className={`poster-shape shape-${index + 1}`} />
-                    <small>{project.aside}</small>
+                  <div className={`app-showcase app-${project.id}`} aria-hidden="true">
+                    <div className="phone phone-back">
+                      <div className="dynamic-island" />
+                      {index === 0 && <div className="kura-screen"><small>today</small><b>1,842</b><span>of 2,200 kcal</span><i /><ul><li>protein <em>112g</em></li><li>carbs <em>204g</em></li><li>fat <em>58g</em></li></ul></div>}
+                      {index === 1 && <div className="wayfinder-screen"><small>wayfinder</small><div className="mini-map"><i /><i /><i /><span /></div><b>12 min</b><span>best route found</span></div>}
+                      {index === 2 && <div className="refill-screen"><small>nearby resources</small><b>12 items</b><ul><li><i /> notebooks <em>24</em></li><li><i /> markers <em>8</em></li><li><i /> folders <em>16</em></li></ul></div>}
+                    </div>
+                    <div className="phone phone-front"><div className="dynamic-island" /><span className="app-mark">{project.name.slice(0, 1)}</span><b>{project.name}</b><small>iOS app</small></div>
+                    <span className="ios-label">designed for iPhone</span>
+                    <small className="project-aside">{project.aside}</small>
                   </div>
                   <div className="project-info">
                     <p>{project.description}</p>
@@ -138,20 +153,25 @@ export default function Home() {
 
       <section className="lab section" id="lab">
         <div className="lab-copy" data-reveal>
-          <p className="kicker">02 / currently overengineering</p>
+          <p className="kicker">02 / learning project</p>
           <h2>the robotic<br />plant.</h2>
-          <p>A 3D-printed pot. Servo-powered TPU leaves. A proximity sensor. Wave your hand and it sways like there’s wind.</p>
+          <p>A beginner robotics concept I want to build: a 3D-printed pot with flexible TPU leaves, small servos, and a proximity sensor that makes it react when someone waves nearby.</p>
           <button type="button" onClick={() => setPlantAwake((value) => !value)}>{plantAwake ? "reset sensor" : "test the sensor"}</button>
+          <div className="plant-specs" aria-label="planned components"><span>concept</span><span>ToF sensor</span><span>micro servos</span><span>TPU leaves</span></div>
         </div>
         <div
+          ref={plantRef}
           className={`plant-demo ${plantAwake ? "is-awake" : ""}`}
+          onPointerMove={movePlant}
           onPointerEnter={() => setPlantAwake(true)}
           onPointerLeave={() => setPlantAwake(false)}
           role="img"
           aria-label="Interactive prototype of a robotic plant pot. Hover or tap the test sensor button to make its leaves sway."
           data-reveal
         >
-          <span className="sensor-zone">wave here</span>
+          <span className="concept-label">concept · not built yet</span>
+          <span className="sensor-zone">move here</span>
+          <div className="sensor-field" aria-hidden="true"><i /><i /><i /></div>
           <div className="plant">
             <i className="leaf leaf-one" /><i className="leaf leaf-two" /><i className="leaf leaf-three" /><i className="leaf leaf-four" />
             <div className="stem" />
@@ -159,7 +179,7 @@ export default function Home() {
             <div className="servo servo-left" /><div className="servo servo-right" />
           </div>
           <div className="signal"><i /><i /><i /></div>
-          <p>{plantAwake ? "proximity detected — deploying breeze" : "sensor idle"}</p>
+          <p>{plantAwake ? "proximity detected — servos moving" : "sensor idle — move your cursor nearby"}</p>
         </div>
       </section>
 
@@ -170,7 +190,7 @@ export default function Home() {
         </div>
         <div className="about-copy" data-reveal>
           <p>I’m a 14-year-old freshman at Leland High School. I like ambitious projects that push me to learn whatever the next step requires.</p>
-          <p>Right now that means product design, web development, AI, CAD, 3D printing, and robotics. I’m excited to see where those skills lead.</p>
+          <p>I’m strongest in product ideas, iOS apps, and web design. I’m still a beginner at hardware, CAD, and robotics—and the plant project is how I want to start learning them.</p>
           <div className="skill-switcher" role="group" aria-label="skills">
             {Object.keys(skillNotes).map((item) => (
               <button key={item} className={skill === item ? "active" : ""} onClick={() => setSkill(item)} type="button">{item}</button>
