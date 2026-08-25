@@ -6,9 +6,9 @@ const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const SITE_URL = "https://aaditya-shah-builds.karshah133370.chatgpt.site";
-const SITE_TITLE = "Aaditya Shah | iOS Developer & Student Builder";
+const SITE_TITLE = "Aaditya Shah | App Developer, Game Creator & Student Builder";
 const SITE_DESCRIPTION =
-  "Aaditya Shah is a 14-year-old student builder in San Jose creating iOS apps including Kura, Wayfinder, and Refill, plus websites and learning projects.";
+  "Aaditya Shah is a student builder creating iOS and Mac apps, arcade and 3D racing games, websites, and hands-on learning projects in San Jose.";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -28,6 +28,9 @@ const structuredData = {
         { "@id": `${SITE_URL}/#kura` },
         { "@id": `${SITE_URL}/#wayfinder` },
         { "@id": `${SITE_URL}/#refill` },
+        { "@id": `${SITE_URL}/#turbo-lane` },
+        { "@id": `${SITE_URL}/#formula-racer` },
+        { "@id": `${SITE_URL}/#winglab` },
       ],
     },
     {
@@ -36,12 +39,14 @@ const structuredData = {
       name: "Aaditya Shah",
       alternateName: "aShah2025",
       url: SITE_URL,
-      description: "Student iOS app creator and web designer in San Jose.",
+      description: "Student app developer, game creator, and web designer in San Jose.",
       homeLocation: { "@type": "City", name: "San Jose, California" },
       knowsAbout: [
         "iOS app development",
         "Product design",
         "Web design",
+        "Game development",
+        "Aerodynamics simulation",
         "AI-assisted routing",
         "3D printing",
         "Robotics fundamentals",
@@ -84,7 +89,32 @@ const structuredData = {
       name: "Refill",
       operatingSystem: "iOS",
       applicationCategory: "LifestyleApplication",
-      description: "An iOS hydration app designed to make daily water tracking simple.",
+      description: "An iOS resource network that helps teachers find nearby classroom supplies.",
+      creator: { "@id": `${SITE_URL}/#aaditya-shah` },
+    },
+    {
+      "@type": "VideoGame",
+      "@id": `${SITE_URL}/#turbo-lane`,
+      name: "Turbo Lane",
+      genre: ["Arcade", "Racing"],
+      description: "A vertical arcade racing game focused on dodging traffic and chasing high scores.",
+      creator: { "@id": `${SITE_URL}/#aaditya-shah` },
+    },
+    {
+      "@type": "VideoGame",
+      "@id": `${SITE_URL}/#formula-racer`,
+      name: "Formula Racer",
+      genre: ["3D", "Racing"],
+      description: "A 3D racing game currently in development, loosely inspired by Formula 1 games.",
+      creator: { "@id": `${SITE_URL}/#aaditya-shah` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#winglab`,
+      name: "WingLab",
+      operatingSystem: "macOS",
+      applicationCategory: "EducationalApplication",
+      description: "A Mac physics simulator and aerodynamics tester for exploring wings, airflow, lift, and drag.",
       creator: { "@id": `${SITE_URL}/#aaditya-shah` },
     },
   ],
@@ -121,8 +151,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/og.png",
-        width: 1635,
-        height: 962,
+        width: 1536,
+        height: 1024,
         alt: "Aaditya Shah — Builder, Designer, Engineer",
       },
     ],

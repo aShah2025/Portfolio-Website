@@ -11,6 +11,7 @@ const projects = [
     tools: ["iOS", "product design", "health"],
     aside: "made for cac 2025",
     color: "#ff583d",
+    kind: "ios",
   },
   {
     id: "wayfinder",
@@ -20,6 +21,7 @@ const projects = [
     tools: ["iOS", "Valhalla API", "AI routing"],
     aside: "custom bike routing",
     color: "#3155ff",
+    kind: "ios",
   },
   {
     id: "refill",
@@ -29,8 +31,92 @@ const projects = [
     tools: ["iOS", "community", "education"],
     aside: "resources, redistributed",
     color: "#c5ee34",
+    kind: "ios",
+  },
+  {
+    id: "turbo-lane",
+    name: "turbo lane",
+    oneLiner: "a vertical arcade racer built for fast runs.",
+    description: "A vertical arcade racing game focused on dodging traffic, chasing a higher score, and getting back into the action instantly.",
+    tools: ["game design", "arcade", "racing"],
+    aside: "score. dodge. repeat.",
+    color: "#ffc629",
+    kind: "arcade",
+  },
+  {
+    id: "formula-racer",
+    name: "formula racer",
+    oneLiner: "a 3D racing game currently in development.",
+    description: "A 3D racing game I’m working on, loosely inspired by the speed, camera work, and race-weekend energy of the F1 games.",
+    tools: ["3D", "game development", "racing"],
+    aside: "currently in development",
+    color: "#ff4b32",
+    kind: "racing",
+  },
+  {
+    id: "winglab",
+    name: "winglab",
+    oneLiner: "a macOS aerodynamics playground.",
+    description: "A Mac physics simulator and aerodynamics tester for exploring wings, airflow, lift, and drag—the kind of tool an aerospace engineer could get lost in.",
+    tools: ["macOS", "physics", "aerodynamics"],
+    aside: "test the air before the build",
+    color: "#72d7ff",
+    kind: "desktop",
   },
 ];
+
+type Project = (typeof projects)[number];
+
+function ProjectPreview({ project }: { project: Project }) {
+  if (project.kind === "ios") {
+    return (
+      <>
+        <div className="phone phone-back">
+          <div className="dynamic-island" />
+          {project.id === "kura" && <div className="kura-screen"><small>today</small><b>1,842</b><span>of 2,200 kcal</span><i /><ul><li>protein <em>112g</em></li><li>carbs <em>204g</em></li><li>fat <em>58g</em></li></ul></div>}
+          {project.id === "wayfinder" && <div className="wayfinder-screen"><small>describe your ride</small><div className="route-prompt">Safer bike route. Avoid highways.</div><div className="route-filters"><span>safer streets</span><span>no highways</span></div><div className="mini-map"><i /><i /><i /><span /></div><b>18 min</b><span>Valhalla route</span></div>}
+          {project.id === "refill" && <div className="refill-screen"><small>nearby resources</small><b>12 items</b><ul><li><i /> notebooks <em>24</em></li><li><i /> markers <em>8</em></li><li><i /> folders <em>16</em></li></ul></div>}
+        </div>
+        <div className="phone phone-front"><div className="dynamic-island" /><span className="app-mark">{project.name.slice(0, 1)}</span><b>{project.name}</b><small>iOS app</small></div>
+        <span className="platform-label">designed for iPhone</span>
+      </>
+    );
+  }
+
+  if (project.kind === "arcade") {
+    return (
+      <div className="arcade-preview">
+        <div className="arcade-hud"><span>score</span><b>08,420</b><i>x4</i></div>
+        <div className="arcade-road"><i /><i /><i /><span className="racer-car" /><span className="traffic-car traffic-one" /><span className="traffic-car traffic-two" /></div>
+        <strong>TURBO<br />LANE</strong>
+        <small>vertical arcade racer</small>
+      </div>
+    );
+  }
+
+  if (project.kind === "racing") {
+    return (
+      <div className="formula-preview">
+        <div className="race-sky"><span>lap 03 / 12</span><b>287 <small>km/h</small></b></div>
+        <div className="race-track"><i /><i /><i /><div className="formula-car"><span /><b /></div></div>
+        <div className="race-status"><span>DRS</span><i>development build</i></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="winglab-window">
+      <div className="window-bar"><i /><i /><i /><b>WingLab — airflow test 04</b></div>
+      <div className="winglab-toolbar"><span>AOA&nbsp; 8°</span><span>velocity&nbsp; 42 m/s</span><span>density&nbsp; 1.225</span><button type="button" tabIndex={-1}>run test</button></div>
+      <div className="airflow-stage">
+        <div className="air-lines"><i /><i /><i /><i /><i /><i /></div>
+        <div className="wing-profile" />
+        <span className="lift-arrow">↑ <small>lift</small></span>
+      </div>
+      <div className="winglab-results"><span><small>CL</small><b>1.14</b></span><span><small>CD</small><b>0.032</b></span><span><small>L/D</small><b>35.6</b></span></div>
+    </div>
+  );
+}
 
 const skillNotes: Record<string, string> = {
   web: "I build fast, thoughtful websites with details worth noticing.",
@@ -56,8 +142,13 @@ export default function Home() {
 
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    elements.forEach((element) => element.classList.add("reveal-pending"));
     const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add("in-view")),
+      (entries) => entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.remove("reveal-pending");
+        observer.unobserve(entry.target);
+      }),
       { threshold: 0.14 },
     );
     elements.forEach((element) => observer.observe(element));
@@ -129,14 +220,7 @@ export default function Home() {
                 </button>
                 <div className="project-details" id={`${project.id}-details`} aria-hidden={!isOpen}>
                   <div className={`app-showcase app-${project.id}`} aria-hidden="true">
-                    <div className="phone phone-back">
-                      <div className="dynamic-island" />
-                      {index === 0 && <div className="kura-screen"><small>today</small><b>1,842</b><span>of 2,200 kcal</span><i /><ul><li>protein <em>112g</em></li><li>carbs <em>204g</em></li><li>fat <em>58g</em></li></ul></div>}
-                      {index === 1 && <div className="wayfinder-screen"><small>describe your ride</small><div className="route-prompt">Safer bike route. Avoid highways.</div><div className="route-filters"><span>safer streets</span><span>no highways</span></div><div className="mini-map"><i /><i /><i /><span /></div><b>18 min</b><span>Valhalla route</span></div>}
-                      {index === 2 && <div className="refill-screen"><small>nearby resources</small><b>12 items</b><ul><li><i /> notebooks <em>24</em></li><li><i /> markers <em>8</em></li><li><i /> folders <em>16</em></li></ul></div>}
-                    </div>
-                    <div className="phone phone-front"><div className="dynamic-island" /><span className="app-mark">{project.name.slice(0, 1)}</span><b>{project.name}</b><small>iOS app</small></div>
-                    <span className="ios-label">designed for iPhone</span>
+                    <ProjectPreview project={project} />
                     <small className="project-aside">{project.aside}</small>
                   </div>
                   <div className="project-info">
