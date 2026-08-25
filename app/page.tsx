@@ -184,7 +184,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-meta">
-          <span>14 · san jose</span>
+          <span>high-school student · san jose</span>
           <span className="available"><i /> currently making something</span>
         </div>
         <h1><span className="hero-line">i turn ideas</span><br /><span className="hero-line outline-line">into real things.</span></h1>
@@ -192,7 +192,7 @@ export default function Home() {
           <p>Hey, I’m Aaditya. I build iOS apps, websites, and whatever I’m curious enough to learn next.</p>
           <a href="#work">explore my work <span>↓</span></a>
         </div>
-        <div className="loose-note note-one" aria-hidden="true">freshman @ leland</div>
+        <div className="loose-note note-one" aria-hidden="true">high-school student</div>
         <div className="loose-note note-two" aria-hidden="true">building &gt; talking</div>
       </section>
 
@@ -273,7 +273,7 @@ export default function Home() {
           <h2>just getting<br />started.</h2>
         </div>
         <div className="about-copy" data-reveal>
-          <p>I’m a 14-year-old freshman at Leland High School. I like ambitious projects that push me to learn whatever the next step requires.</p>
+          <p>I’m a high-school student in San Jose. I like ambitious projects that push me to learn whatever the next step requires.</p>
           <p>I’m strongest in product ideas, iOS apps, and web design. I’m still a beginner at hardware, CAD, and robotics—and the plant project is how I want to start learning them.</p>
           <div className="skill-switcher" role="group" aria-label="skills">
             {Object.keys(skillNotes).map((item) => (
@@ -288,7 +288,7 @@ export default function Home() {
         <p className="kicker">also in progress</p>
         <div className="next-grid">
           <article data-reveal><span>01</span><h3>small-business websites</h3><p>Thoughtful, modern websites for local businesses ready to stand out online.</p></article>
-          <article data-reveal><span>02</span><h3>quixilver 604</h3><p>Taking my next step into competitive robotics with Leland’s FRC team.</p></article>
+          <article data-reveal><span>02</span><h3>quixilver 604</h3><p>Taking my next step into competitive robotics with an FRC team.</p></article>
         </div>
       </section>
 

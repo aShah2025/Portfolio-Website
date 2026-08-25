@@ -5,7 +5,7 @@ import "./globals.css";
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-const SITE_URL = "https://aaditya-shah-builds.karshah133370.chatgpt.site";
+const SITE_URL = "https://aaditya-builds.vercel.app";
 const SITE_TITLE = "Aaditya Shah | App Developer, Game Creator & Student Builder";
 const SITE_DESCRIPTION =
   "Aaditya Shah is a student builder creating iOS and Mac apps, arcade and 3D racing games, websites, and hands-on learning projects in San Jose.";
@@ -150,9 +150,9 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og.png",
-        width: 1536,
-        height: 1024,
+        url: "/og.jpg",
+        width: 1200,
+        height: 800,
         alt: "Aaditya Shah — Builder, Designer, Engineer",
       },
     ],
@@ -161,7 +161,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/og.png"],
+    images: ["/og.jpg"],
   },
 };
 
