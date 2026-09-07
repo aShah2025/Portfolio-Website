@@ -20,7 +20,7 @@ const structuredData = {
       name: SITE_TITLE,
       description: SITE_DESCRIPTION,
       dateCreated: "2026-08-21",
-      dateModified: "2026-08-24",
+      dateModified: "2026-09-07",
       inLanguage: "en-US",
       isPartOf: { "@id": `${SITE_URL}/#website` },
       mainEntity: { "@id": `${SITE_URL}/#aaditya-shah` },

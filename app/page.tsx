@@ -10,6 +10,7 @@ const projects = [
     description: "An iOS app I made for CAC 2025 that keeps calories and macros clear, quick, and easy to check throughout the day.",
     tools: ["iOS", "product design", "health"],
     aside: "made for cac 2025",
+    status: "built",
     color: "#ff583d",
     kind: "ios",
   },
@@ -20,6 +21,7 @@ const projects = [
     description: "Google Maps does not always give cyclists enough control over the route. Wayfinder lets you describe the ride you want and add filters like “avoid highways” or “prioritize safer streets,” then uses the Valhalla routing API to build a route around those choices.",
     tools: ["iOS", "Valhalla API", "AI routing"],
     aside: "custom bike routing",
+    status: "prototype",
     color: "#3155ff",
     kind: "ios",
   },
@@ -30,6 +32,7 @@ const projects = [
     description: "An iOS app that connects teachers with nearby classroom supplies, so educators can find what they need without paying out of pocket.",
     tools: ["iOS", "community", "education"],
     aside: "resources, redistributed",
+    status: "built",
     color: "#c5ee34",
     kind: "ios",
   },
@@ -40,6 +43,7 @@ const projects = [
     description: "A vertical arcade racing game focused on dodging traffic, chasing a higher score, and getting back into the action instantly.",
     tools: ["game design", "arcade", "racing"],
     aside: "score. dodge. repeat.",
+    status: "playable",
     color: "#ffc629",
     kind: "arcade",
   },
@@ -50,6 +54,7 @@ const projects = [
     description: "A 3D racing game I’m working on, loosely inspired by the speed, camera work, and race-weekend energy of the F1 games.",
     tools: ["3D", "game development", "racing"],
     aside: "currently in development",
+    status: "building",
     color: "#ff4b32",
     kind: "racing",
   },
@@ -60,6 +65,7 @@ const projects = [
     description: "A Mac physics simulator and aerodynamics tester for exploring wings, airflow, lift, and drag—the kind of tool an aerospace engineer could get lost in.",
     tools: ["macOS", "physics", "aerodynamics"],
     aside: "test the air before the build",
+    status: "built",
     color: "#72d7ff",
     kind: "desktop",
   },
@@ -130,8 +136,12 @@ export default function Home() {
   const plantRef = useRef<HTMLDivElement>(null);
   const [openProject, setOpenProject] = useState<string | null>(null);
   const [skill, setSkill] = useState("web");
+  const [featuredId, setFeaturedId] = useState("wayfinder");
   const [plantAwake, setPlantAwake] = useState(false);
   const [time, setTime] = useState("");
+
+  const featuredProjects = projects.filter((project) => ["wayfinder", "formula-racer", "winglab"].includes(project.id));
+  const featuredProject = projects.find((project) => project.id === featuredId) ?? featuredProjects[0];
 
   useEffect(() => {
     const updateTime = () => setTime(new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" }).format(new Date()));
@@ -168,6 +178,11 @@ export default function Home() {
     setPlantAwake(true);
   };
 
+  const openFeaturedProject = () => {
+    setOpenProject(featuredProject.id);
+    window.requestAnimationFrame(() => document.getElementById(featuredProject.id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   return (
     <main ref={pageRef} onPointerMove={trackPointer}>
       <div className="cursor-glow" aria-hidden="true" />
@@ -185,15 +200,41 @@ export default function Home() {
       <section className="hero" id="top">
         <div className="hero-meta">
           <span>high-school student · san jose</span>
-          <span className="available"><i /> currently making something</span>
+          <span className="available"><i /> currently building</span>
         </div>
-        <h1><span className="hero-line">i turn ideas</span><br /><span className="hero-line outline-line">into real things.</span></h1>
-        <div className="hero-foot">
-          <p>Hey, I’m Aaditya. I build iOS apps, websites, and whatever I’m curious enough to learn next.</p>
-          <a href="#work">explore my work <span>↓</span></a>
+        <div className="hero-grid">
+          <div className="hero-message">
+            <h1><span className="hero-line">apps, games</span><br /><span className="hero-line outline-line">&amp; whatever’s next.</span></h1>
+            <div className="hero-foot">
+              <p>Hey, I’m Aaditya. I’m a student who turns ideas into iOS apps, games, websites, and experiments.</p>
+              <a href="#work">see the builds <span>↓</span></a>
+            </div>
+          </div>
+          <aside className="build-deck" style={{ "--deck-color": featuredProject.color } as React.CSSProperties} aria-label="featured build deck">
+            <div className="deck-top"><span>build deck</span><span>03 files</span></div>
+            <div className="deck-card" aria-live="polite">
+              <div className="deck-index">0{projects.indexOf(featuredProject) + 1}</div>
+              <span className="deck-status"><i /> {featuredProject.status}</span>
+              <h2>{featuredProject.name}</h2>
+              <p>{featuredProject.oneLiner}</p>
+              <button type="button" onClick={openFeaturedProject}>open project <span>↘</span></button>
+            </div>
+            <div className="deck-tabs" role="group" aria-label="choose a featured project">
+              {featuredProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  className={featuredId === project.id ? "active" : ""}
+                  aria-pressed={featuredId === project.id}
+                  onClick={() => setFeaturedId(project.id)}
+                >
+                  {project.name}
+                </button>
+              ))}
+            </div>
+          </aside>
         </div>
-        <div className="loose-note note-one" aria-hidden="true">high-school student</div>
-        <div className="loose-note note-two" aria-hidden="true">building &gt; talking</div>
+        <div className="hero-proof" aria-label="portfolio summary"><span><b>06</b> projects</span><span><b>03</b> platforms</span><span><b>01</b> hardware concept</span></div>
       </section>
 
       <section className="ticker" aria-label="currently">
@@ -203,19 +244,20 @@ export default function Home() {
 
       <section className="work section" id="work">
         <div className="section-intro" data-reveal>
-          <p className="kicker">01 / things that exist</p>
-          <h2>some work.</h2>
-          <p className="aside-copy">click one. there’s more under the surface.</p>
+          <p className="kicker">01 / selected builds</p>
+          <h2>the work.</h2>
+          <p className="aside-copy">open a file for the story, tools, and a live little preview.</p>
         </div>
 
         <div className="project-stack">
           {projects.map((project, index) => {
             const isOpen = openProject === project.id;
             return (
-              <article className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
+              <article id={project.id} className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
                 <button type="button" onClick={() => setOpenProject(isOpen ? null : project.id)} aria-expanded={isOpen} aria-controls={`${project.id}-details`}>
                   <span className="project-number">0{index + 1}</span>
                   <span className="project-title"><b>{project.name}</b><em>{project.oneLiner}</em></span>
+                  <span className="project-status"><i />{project.status}</span>
                   <span className="project-action">{isOpen ? "close" : "open"} <i>{isOpen ? "−" : "+"}</i></span>
                 </button>
                 <div className="project-details" id={`${project.id}-details`} aria-hidden={!isOpen}>
@@ -226,7 +268,7 @@ export default function Home() {
                   <div className="project-info">
                     <p>{project.description}</p>
                     <ul>{project.tools.map((tool) => <li key={tool}>{tool}</li>)}</ul>
-                    <span>built, tested, and still evolving.</span>
+                    <span>{project.status === "building" ? "currently in development." : project.status === "prototype" ? "an active product prototype." : "made, tested, and still evolving."}</span>
                   </div>
                 </div>
               </article>
