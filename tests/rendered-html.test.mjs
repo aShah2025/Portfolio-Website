@@ -21,7 +21,7 @@ test("server-renders Aaditya's portfolio and SEO metadata", async () => {
 
   const html = await response.text();
   assert.match(html, /Aaditya Shah \| Apps, Games &amp; Experiments/);
-  assert.match(html, /occasional weird experiment/);
+  assert.match(html, /whatever I want to learn next/);
   assert.match(html, /Wayfinder/);
   assert.match(html, /WingLab/);
   assert.match(html, /application\/ld\+json/);
@@ -29,12 +29,13 @@ test("server-renders Aaditya's portfolio and SEO metadata", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/);
 });
 
-test("keeps the interactive project index, recognition, and soundscape in source", async () => {
+test("keeps the oversized interactive project list and recognition in source", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(page, /className="index-panel"/);
-  assert.match(page, /setActiveView/);
-  assert.match(page, /Congressional recognition/);
-  assert.match(page, /new AudioContext\(\)/);
+  assert.match(page, /className="project-list"/);
+  assert.match(page, /setOpenProject/);
+  assert.match(page, /Congressional/);
+  assert.match(page, /aria-expanded/);
+  assert.match(css, /font-size: clamp\(6rem, 15\.2vw, 18rem\)/);
   assert.match(css, /prefers-reduced-motion/);
 });
