@@ -1,350 +1,361 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const projects = [
   {
-    id: "kura",
-    name: "kura",
-    oneLiner: "an iOS calorie and macro tracker.",
-    description: "An iOS app I made for CAC 2025 that keeps calories and macros clear, quick, and easy to check throughout the day.",
-    tools: ["iOS", "product design", "health"],
-    aside: "made for cac 2025",
-    status: "built",
-    color: "#ff583d",
-    kind: "ios",
+    id: "wayfinder",
+    index: "01",
+    name: "Wayfinder",
+    group: "main projects",
+    status: "prototype",
+    platform: "iOS · Valhalla API",
+    accent: "#4f7cff",
+    visual: "route",
+    description:
+      "Bike routes that listen to actual instructions, because ‘avoid highways’ should not be a complicated request.",
+    detail:
+      "Describe the ride you want, add filters like safer streets or no highways, and Wayfinder builds the route around those choices.",
   },
   {
-    id: "wayfinder",
-    name: "wayfinder",
-    oneLiner: "bike routes that actually listen to you.",
-    description: "Google Maps does not always give cyclists enough control over the route. Wayfinder lets you describe the ride you want and add filters like “avoid highways” or “prioritize safer streets,” then uses the Valhalla routing API to build a route around those choices.",
-    tools: ["iOS", "Valhalla API", "AI routing"],
-    aside: "custom bike routing",
-    status: "prototype",
-    color: "#3155ff",
-    kind: "ios",
+    id: "kura",
+    index: "02",
+    name: "Kura",
+    group: "main projects",
+    status: "built",
+    platform: "iOS · CAC 2025",
+    accent: "#ff6a4d",
+    visual: "health",
+    description:
+      "A calorie and macro tracker for iPhone. It does the math so I do not have to keep reopening Calculator.",
+    detail:
+      "I made Kura for CAC 2025 to keep daily calories, protein, carbs, and fat quick to log and easy to read.",
   },
   {
     id: "refill",
-    name: "refill",
-    oneLiner: "an iOS resource network for teachers.",
-    description: "An iOS app that connects teachers with nearby classroom supplies, so educators can find what they need without paying out of pocket.",
-    tools: ["iOS", "community", "education"],
-    aside: "resources, redistributed",
+    index: "03",
+    name: "Refill",
+    group: "main projects",
     status: "built",
-    color: "#c5ee34",
-    kind: "ios",
+    platform: "iOS · education",
+    accent: "#d7ff45",
+    visual: "resources",
+    description:
+      "Gets extra classroom supplies to teachers who need them, because teachers buying basics themselves makes no sense.",
+    detail:
+      "Refill is a nearby resource network where educators can list, find, and share classroom supplies instead of paying out of pocket.",
   },
   {
     id: "turbo-lane",
-    name: "turbo lane",
-    oneLiner: "a vertical arcade racer built for fast runs.",
-    description: "A vertical arcade racing game focused on dodging traffic, chasing a higher score, and getting back into the action instantly.",
-    tools: ["game design", "arcade", "racing"],
-    aside: "score. dodge. repeat.",
+    index: "04",
+    name: "Turbo Lane",
+    group: "games",
     status: "playable",
-    color: "#ffc629",
-    kind: "arcade",
+    platform: "arcade racer",
+    accent: "#ffd33d",
+    visual: "arcade",
+    description:
+      "A vertical arcade racer for short runs and bad decisions at high speed.",
+    detail:
+      "Dodge traffic, chase a higher score, crash, and get straight back into another run.",
   },
   {
     id: "formula-racer",
-    name: "formula racer",
-    oneLiner: "a 3D racing game currently in development.",
-    description: "A 3D racing game I’m working on, loosely inspired by the speed, camera work, and race-weekend energy of the F1 games.",
-    tools: ["3D", "game development", "racing"],
-    aside: "currently in development",
+    index: "05",
+    name: "Formula Racer",
+    group: "games",
     status: "building",
-    color: "#ff4b32",
-    kind: "racing",
+    platform: "3D racing game",
+    accent: "#ff5148",
+    visual: "racing",
+    description:
+      "A 3D racing game I am building. The lap time is not good yet.",
+    detail:
+      "It is loosely inspired by the speed, cameras, and race-weekend energy of the F1 games.",
   },
   {
     id: "winglab",
-    name: "winglab",
-    oneLiner: "a macOS aerodynamics playground.",
-    description: "A Mac physics simulator and aerodynamics tester for exploring wings, airflow, lift, and drag—the kind of tool an aerospace engineer could get lost in.",
-    tools: ["macOS", "physics", "aerodynamics"],
-    aside: "test the air before the build",
+    index: "06",
+    name: "WingLab",
+    group: "experiments",
     status: "built",
-    color: "#72d7ff",
-    kind: "desktop",
+    platform: "macOS · physics",
+    accent: "#66d8ff",
+    visual: "airflow",
+    description:
+      "A Mac aerodynamics sandbox for changing a wing and immediately finding out what that did.",
+    detail:
+      "Adjust airflow and angle of attack, then compare lift, drag, and efficiency without needing a wind tunnel.",
   },
-];
+  {
+    id: "robotic-plant",
+    index: "07",
+    name: "Robotic Plant",
+    group: "experiments",
+    status: "concept",
+    platform: "hardware learning project",
+    accent: "#85ff63",
+    visual: "sensor",
+    description:
+      "A plant pot that sways when you wave at it. I am still learning hardware, which is kind of the point.",
+    detail:
+      "The plan is a 3D-printed pot, flexible TPU leaves, small servos, and a proximity sensor that turns a hand wave into motion.",
+  },
+] as const;
 
 type Project = (typeof projects)[number];
 
-function ProjectPreview({ project }: { project: Project }) {
-  if (project.kind === "ios") {
-    return (
-      <>
-        <div className="phone phone-back">
-          <div className="dynamic-island" />
-          {project.id === "kura" && <div className="kura-screen"><small>today</small><b>1,842</b><span>of 2,200 kcal</span><i /><ul><li>protein <em>112g</em></li><li>carbs <em>204g</em></li><li>fat <em>58g</em></li></ul></div>}
-          {project.id === "wayfinder" && <div className="wayfinder-screen"><small>describe your ride</small><div className="route-prompt">Safer bike route. Avoid highways.</div><div className="route-filters"><span>safer streets</span><span>no highways</span></div><div className="mini-map"><i /><i /><i /><span /></div><b>18 min</b><span>Valhalla route</span></div>}
-          {project.id === "refill" && <div className="refill-screen"><small>nearby resources</small><b>12 items</b><ul><li><i /> notebooks <em>24</em></li><li><i /> markers <em>8</em></li><li><i /> folders <em>16</em></li></ul></div>}
-        </div>
-        <div className="phone phone-front"><div className="dynamic-island" /><span className="app-mark">{project.name.slice(0, 1)}</span><b>{project.name}</b><small>iOS app</small></div>
-        <span className="platform-label">designed for iPhone</span>
-      </>
-    );
-  }
+const menuGroups = [
+  { label: "main projects", ids: ["wayfinder", "kura", "refill"] },
+  { label: "games + experiments", ids: ["turbo-lane", "formula-racer", "winglab", "robotic-plant"] },
+] as const;
 
-  if (project.kind === "arcade") {
+function ProjectVisual({ project }: { project: Project }) {
+  if (project.visual === "route") {
     return (
-      <div className="arcade-preview">
-        <div className="arcade-hud"><span>score</span><b>08,420</b><i>x4</i></div>
-        <div className="arcade-road"><i /><i /><i /><span className="racer-car" /><span className="traffic-car traffic-one" /><span className="traffic-car traffic-two" /></div>
-        <strong>TURBO<br />LANE</strong>
-        <small>vertical arcade racer</small>
+      <div className="route-map visual-inner">
+        <span className="route-line route-a" /><span className="route-line route-b" /><span className="route-line route-c" />
+        <i className="route-node node-a" /><i className="route-node node-b" /><i className="route-node node-c" />
+        <b>START</b><b>SAFER STREETS</b><b>18 MIN</b>
       </div>
     );
   }
 
-  if (project.kind === "racing") {
+  if (project.visual === "health") {
     return (
-      <div className="formula-preview">
-        <div className="race-sky"><span>lap 03 / 12</span><b>287 <small>km/h</small></b></div>
-        <div className="race-track"><i /><i /><i /><div className="formula-car"><span /><b /></div></div>
-        <div className="race-status"><span>DRS</span><i>development build</i></div>
+      <div className="health-grid visual-inner">
+        <span><small>CALORIES</small><b>1,842</b><i style={{ "--fill": "74%" } as React.CSSProperties} /></span>
+        <span><small>PROTEIN</small><b>112g</b><i style={{ "--fill": "62%" } as React.CSSProperties} /></span>
+        <span><small>CARBS</small><b>204g</b><i style={{ "--fill": "81%" } as React.CSSProperties} /></span>
+      </div>
+    );
+  }
+
+  if (project.visual === "resources") {
+    return (
+      <div className="resource-stack visual-inner">
+        <span><i>24</i><b>notebooks</b><small>1.2 mi</small></span>
+        <span><i>08</i><b>markers</b><small>0.7 mi</small></span>
+        <span><i>16</i><b>folders</b><small>2.0 mi</small></span>
+      </div>
+    );
+  }
+
+  if (project.visual === "arcade") {
+    return (
+      <div className="arcade-field visual-inner">
+        <div className="score"><small>SCORE</small><b>08,420</b></div>
+        <div className="road"><i /><i /><i /><span className="player" /><span className="traffic t-one" /><span className="traffic t-two" /></div>
+        <strong>x4</strong>
+      </div>
+    );
+  }
+
+  if (project.visual === "racing") {
+    return (
+      <div className="telemetry visual-inner">
+        <span className="speed"><b>287</b><small>KM/H</small></span>
+        <div className="track"><i /><i /><i /></div>
+        <span className="lap">LAP 03 / 12</span><span className="drs">DRS</span>
+      </div>
+    );
+  }
+
+  if (project.visual === "airflow") {
+    return (
+      <div className="airflow visual-inner">
+        <div className="flow-lines"><i /><i /><i /><i /><i /></div>
+        <div className="airfoil" />
+        <span><small>CL</small><b>1.14</b></span><span><small>CD</small><b>0.032</b></span><span><small>L/D</small><b>35.6</b></span>
       </div>
     );
   }
 
   return (
-    <div className="winglab-window">
-      <div className="window-bar"><i /><i /><i /><b>WingLab — airflow test 04</b></div>
-      <div className="winglab-toolbar"><span>AOA&nbsp; 8°</span><span>velocity&nbsp; 42 m/s</span><span>density&nbsp; 1.225</span><button type="button" tabIndex={-1}>run test</button></div>
-      <div className="airflow-stage">
-        <div className="air-lines"><i /><i /><i /><i /><i /><i /></div>
-        <div className="wing-profile" />
-        <span className="lift-arrow">↑ <small>lift</small></span>
-      </div>
-      <div className="winglab-results"><span><small>CL</small><b>1.14</b></span><span><small>CD</small><b>0.032</b></span><span><small>L/D</small><b>35.6</b></span></div>
+    <div className="sensor-diagram visual-inner">
+      <div className="sensor-rings"><i /><i /><i /></div>
+      <span className="sensor-input">HAND<br />INPUT</span>
+      <span className="sensor-arrow">→</span>
+      <span className="sensor-logic">ToF<br />SENSOR</span>
+      <span className="sensor-arrow">→</span>
+      <span className="sensor-output">SERVO<br />MOTION</span>
     </div>
   );
 }
 
-const skillNotes: Record<string, string> = {
-  web: "I build fast, thoughtful websites with details worth noticing.",
-  ai: "I use AI to make products more useful, intuitive, and capable.",
-  robotics: "I’m new to hardware. The robotic plant is how I want to start learning sensors, servos, and physical prototyping.",
-  cad: "I design parts, prototype them, print them, and learn from every version.",
-};
-
 export default function Home() {
-  const pageRef = useRef<HTMLElement>(null);
-  const plantRef = useRef<HTMLDivElement>(null);
-  const [openProject, setOpenProject] = useState<string | null>(null);
-  const [skill, setSkill] = useState("web");
-  const [featuredId, setFeaturedId] = useState("wayfinder");
-  const [plantAwake, setPlantAwake] = useState(false);
-  const [time, setTime] = useState("");
+  const [activeView, setActiveView] = useState("wayfinder");
+  const [soundOn, setSoundOn] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const audioRef = useRef<{ context: AudioContext; gain: GainNode; oscillators: OscillatorNode[] } | null>(null);
 
-  const featuredProjects = projects.filter((project) => ["wayfinder", "formula-racer", "winglab"].includes(project.id));
-  const featuredProject = projects.find((project) => project.id === featuredId) ?? featuredProjects[0];
+  const activeProject = projects.find((project) => project.id === activeView);
+  const sequence = useMemo(() => [...projects.map((project) => project.id), "about", "recognition"], []);
 
-  useEffect(() => {
-    const updateTime = () => setTime(new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" }).format(new Date()));
-    updateTime();
-    const timer = window.setInterval(updateTime, 30000);
-    return () => window.clearInterval(timer);
+  useEffect(() => () => {
+    audioRef.current?.context.close();
   }, []);
 
-  useEffect(() => {
-    const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
-    elements.forEach((element) => element.classList.add("reveal-pending"));
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.remove("reveal-pending");
-        observer.unobserve(entry.target);
-      }),
-      { threshold: 0.14 },
-    );
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
-
-  const trackPointer = (event: React.PointerEvent<HTMLElement>) => {
-    pageRef.current?.style.setProperty("--pointer-x", `${event.clientX}px`);
-    pageRef.current?.style.setProperty("--pointer-y", `${event.clientY}px`);
+  const playClick = (position: number) => {
+    const context = audioRef.current?.context;
+    if (!context) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 220 + position * 18;
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, context.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.16);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.18);
   };
 
-  const movePlant = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const wind = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    plantRef.current?.style.setProperty("--wind", wind.toFixed(2));
-    plantRef.current?.style.setProperty("--wind-angle", `${(wind * 3).toFixed(1)}deg`);
-    setPlantAwake(true);
+  const chooseView = (id: string) => {
+    setActiveView(id);
+    if (soundOn) playClick(Math.max(0, sequence.indexOf(id)));
   };
 
-  const openFeaturedProject = () => {
-    setOpenProject(featuredProject.id);
-    window.requestAnimationFrame(() => document.getElementById(featuredProject.id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  const toggleSound = async () => {
+    if (audioRef.current) {
+      const { context, gain } = audioRef.current;
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+      window.setTimeout(() => context.close(), 220);
+      audioRef.current = null;
+      setSoundOn(false);
+      return;
+    }
+
+    const context = new AudioContext();
+    const gain = context.createGain();
+    const filter = context.createBiquadFilter();
+    const oscillators = [48, 72].map((frequency, index) => {
+      const oscillator = context.createOscillator();
+      oscillator.type = index === 0 ? "sine" : "triangle";
+      oscillator.frequency.value = frequency;
+      oscillator.detune.value = index === 0 ? -4 : 5;
+      oscillator.connect(filter);
+      oscillator.start();
+      return oscillator;
+    });
+    filter.type = "lowpass";
+    filter.frequency.value = 230;
+    gain.gain.value = 0.0001;
+    filter.connect(gain).connect(context.destination);
+    gain.gain.exponentialRampToValueAtTime(0.028, context.currentTime + 0.6);
+    audioRef.current = { context, gain, oscillators };
+    setSoundOn(true);
+  };
+
+  const movePointer = (event: React.PointerEvent<HTMLElement>) => {
+    const x = event.clientX / window.innerWidth;
+    const y = event.clientY / window.innerHeight;
+    mainRef.current?.style.setProperty("--mx", `${x * 100}%`);
+    mainRef.current?.style.setProperty("--my", `${y * 100}%`);
+  };
+
+  const currentIndex = sequence.indexOf(activeView);
+  const step = (direction: number) => {
+    const next = (currentIndex + direction + sequence.length) % sequence.length;
+    chooseView(sequence[next]);
   };
 
   return (
-    <main ref={pageRef} onPointerMove={trackPointer}>
-      <div className="cursor-glow" aria-hidden="true" />
+    <main
+      ref={mainRef}
+      className="experience"
+      onPointerMove={movePointer}
+      style={{ "--accent": activeProject?.accent ?? "#4f7cff" } as React.CSSProperties}
+    >
+      <div className="signal-field" aria-hidden="true"><i /><i /><i /><i /></div>
 
-      <header className="nav">
-        <a className="logo" href="#top">aaditya<span>.</span></a>
-        <nav aria-label="main navigation">
-          <a href="#work">work</a>
-          <a href="#lab">lab</a>
-          <a href="#about">about</a>
+      <aside className="index-panel">
+        <button className="identity" type="button" onClick={() => chooseView("wayfinder")}>
+          <span>Aaditya</span><b>Shah</b>
+        </button>
+        <p className="intro">High-school student in San Jose. I make apps, games, and the occasional weird experiment.</p>
+
+        <nav aria-label="Portfolio index">
+          {menuGroups.map((group) => (
+            <div className="menu-group" key={group.label}>
+              <p>{group.label}</p>
+              {group.ids.map((id) => {
+                const project = projects.find((item) => item.id === id)!;
+                return (
+                  <button
+                    key={project.id}
+                    className={activeView === project.id ? "active" : ""}
+                    type="button"
+                    onClick={() => chooseView(project.id)}
+                    aria-pressed={activeView === project.id}
+                  >
+                    <span>{project.index}</span><b>{project.name}</b><i />
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <div className="menu-group compact">
+            <p>profile</p>
+            <button className={activeView === "about" ? "active" : ""} type="button" onClick={() => chooseView("about")} aria-pressed={activeView === "about"}><span>08</span><b>About</b><i /></button>
+            <button className={activeView === "recognition" ? "active" : ""} type="button" onClick={() => chooseView("recognition")} aria-pressed={activeView === "recognition"}><span>09</span><b>Recognition</b><i /></button>
+          </div>
         </nav>
-        <a className="github-link" href="https://github.com/aShah2025" target="_blank" rel="noreferrer">github ↗</a>
-      </header>
 
-      <section className="hero" id="top">
-        <div className="hero-meta">
-          <span>high-school student · san jose</span>
-          <span className="available"><i /> currently building</span>
+        <div className="panel-footer">
+          <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
+          <button className="sound-toggle" type="button" onClick={toggleSound} aria-pressed={soundOn}>
+            <span className={soundOn ? "playing" : ""}><i /><i /><i /></span> sound {soundOn ? "on" : "off"}
+          </button>
         </div>
-        <div className="hero-grid">
-          <div className="hero-message">
-            <h1><span className="hero-line">apps, games</span><br /><span className="hero-line outline-line">&amp; whatever’s next.</span></h1>
-            <div className="hero-foot">
-              <p>Hey, I’m Aaditya. I’m a student who turns ideas into iOS apps, games, websites, and experiments.</p>
-              <a href="#work">see the builds <span>↓</span></a>
+      </aside>
+
+      <section className="stage" aria-live="polite">
+        <header className="stage-header">
+          <span>A/S — PORTFOLIO 2026</span>
+          <span>{activeProject ? `${activeProject.status} / ${activeProject.platform}` : activeView}</span>
+        </header>
+
+        {activeProject ? (
+          <article className="project-scene" key={activeProject.id}>
+            <div className="scene-copy">
+              <p className="scene-number">{activeProject.index} / {activeProject.group}</p>
+              <h1>{activeProject.name}</h1>
+              <p className="project-lede">{activeProject.description}</p>
+              <p className="project-detail">{activeProject.detail}</p>
             </div>
-          </div>
-          <aside className="build-deck" style={{ "--deck-color": featuredProject.color } as React.CSSProperties} aria-label="featured build deck">
-            <div className="deck-top"><span>build deck</span><span>03 files</span></div>
-            <div className="deck-card" aria-live="polite">
-              <div className="deck-index">0{projects.indexOf(featuredProject) + 1}</div>
-              <span className="deck-status"><i /> {featuredProject.status}</span>
-              <h2>{featuredProject.name}</h2>
-              <p>{featuredProject.oneLiner}</p>
-              <button type="button" onClick={openFeaturedProject}>open project <span>↘</span></button>
+            <div className="project-visual" aria-hidden="true">
+              <span className="visual-label">LIVE MODEL / {activeProject.visual}</span>
+              <ProjectVisual project={activeProject} />
             </div>
-            <div className="deck-tabs" role="group" aria-label="choose a featured project">
-              {featuredProjects.map((project) => (
-                <button
-                  key={project.id}
-                  type="button"
-                  className={featuredId === project.id ? "active" : ""}
-                  aria-pressed={featuredId === project.id}
-                  onClick={() => setFeaturedId(project.id)}
-                >
-                  {project.name}
-                </button>
-              ))}
+          </article>
+        ) : activeView === "recognition" ? (
+          <article className="profile-scene recognition-scene" key="recognition">
+            <p className="scene-number">09 / recognition</p>
+            <h1>Congressional<br /><em>recognition.</em></h1>
+            <div className="recognition-card">
+              <span>01</span><b>Congressional recognition</b><small>A milestone I am proud of.</small>
             </div>
-          </aside>
-        </div>
-        <div className="hero-proof" aria-label="portfolio summary"><span><b>06</b> projects</span><span><b>03</b> platforms</span><span><b>01</b> hardware concept</span></div>
+          </article>
+        ) : (
+          <article className="profile-scene" key="about">
+            <p className="scene-number">08 / about</p>
+            <h1>Still learning.<br /><em>Still building.</em></h1>
+            <div className="about-grid">
+              <p>I am a high-school student in San Jose. I am strongest at product ideas, iOS apps, games, and web design.</p>
+              <p>Hardware, CAD, and robotics are newer territory. The robotic plant is there because learning in public is more interesting than pretending I already know everything.</p>
+              <div><span>FOCUS</span><b>useful software</b></div>
+              <div><span>NEXT</span><b>better physical builds</b></div>
+            </div>
+          </article>
+        )}
+
+        <footer className="stage-controls">
+          <button type="button" onClick={() => step(-1)} aria-label="Previous item">← <span>previous</span></button>
+          <div><i className={soundOn ? "live" : ""} /><span>{soundOn ? "soundscape running" : "soundscape optional"}</span></div>
+          <button type="button" onClick={() => step(1)} aria-label="Next item"><span>next</span> →</button>
+        </footer>
       </section>
-
-      <section className="ticker" aria-label="currently">
-        <span>right now</span>
-        <div><p>learning cad</p><i /> <p>prototyping a robotic plant</p><i /> <p>joining quixilver 604</p><i /> <p>starting a web studio</p></div>
-      </section>
-
-      <section className="work section" id="work">
-        <div className="section-intro" data-reveal>
-          <p className="kicker">01 / selected builds</p>
-          <h2>the work.</h2>
-          <p className="aside-copy">open a file for the story, tools, and a live little preview.</p>
-        </div>
-
-        <div className="project-stack">
-          {projects.map((project, index) => {
-            const isOpen = openProject === project.id;
-            return (
-              <article id={project.id} className={`project ${isOpen ? "is-open" : ""}`} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
-                <button type="button" onClick={() => setOpenProject(isOpen ? null : project.id)} aria-expanded={isOpen} aria-controls={`${project.id}-details`}>
-                  <span className="project-number">0{index + 1}</span>
-                  <span className="project-title"><b>{project.name}</b><em>{project.oneLiner}</em></span>
-                  <span className="project-status"><i />{project.status}</span>
-                  <span className="project-action">{isOpen ? "close" : "open"} <i>{isOpen ? "−" : "+"}</i></span>
-                </button>
-                <div className="project-details" id={`${project.id}-details`} aria-hidden={!isOpen}>
-                  <div className={`app-showcase app-${project.id}`} aria-hidden="true">
-                    <ProjectPreview project={project} />
-                    <small className="project-aside">{project.aside}</small>
-                  </div>
-                  <div className="project-info">
-                    <p>{project.description}</p>
-                    <ul>{project.tools.map((tool) => <li key={tool}>{tool}</li>)}</ul>
-                    <span>{project.status === "building" ? "currently in development." : project.status === "prototype" ? "an active product prototype." : "made, tested, and still evolving."}</span>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="lab section" id="lab">
-        <div className="lab-copy" data-reveal>
-          <p className="kicker">02 / learning project</p>
-          <h2>the robotic<br />plant.</h2>
-          <p>A beginner robotics concept I want to build: a 3D-printed pot with flexible TPU leaves, small servos, and a proximity sensor that makes it react when someone waves nearby.</p>
-          <button type="button" onClick={() => setPlantAwake((value) => !value)}>{plantAwake ? "reset sensor" : "test the sensor"}</button>
-          <div className="plant-specs" aria-label="planned components"><span>concept</span><span>ToF sensor</span><span>micro servos</span><span>TPU leaves</span></div>
-        </div>
-        <div
-          ref={plantRef}
-          className={`plant-demo ${plantAwake ? "is-awake" : ""}`}
-          onPointerMove={movePlant}
-          onPointerEnter={() => setPlantAwake(true)}
-          onPointerLeave={() => setPlantAwake(false)}
-          role="img"
-          aria-label="Interactive prototype of a robotic plant pot. Hover or tap the test sensor button to make its leaves sway."
-          data-reveal
-        >
-          <span className="concept-label">concept · not built yet</span>
-          <span className="sensor-zone">move here</span>
-          <div className="sensor-field" aria-hidden="true"><i /><i /><i /></div>
-          <div className="plant">
-            <i className="leaf leaf-one" /><i className="leaf leaf-two" /><i className="leaf leaf-three" /><i className="leaf leaf-four" />
-            <div className="stem" />
-            <div className="pot"><span>a/s</span></div>
-            <div className="servo servo-left" /><div className="servo servo-right" />
-          </div>
-          <div className="signal"><i /><i /><i /></div>
-          <p>{plantAwake ? "proximity detected — servos moving" : "sensor idle — move your cursor nearby"}</p>
-        </div>
-      </section>
-
-      <section className="about section" id="about">
-        <div data-reveal>
-          <p className="kicker">03 / about, briefly</p>
-          <h2>just getting<br />started.</h2>
-        </div>
-        <div className="about-copy" data-reveal>
-          <p>I’m a high-school student in San Jose. I like ambitious projects that push me to learn whatever the next step requires.</p>
-          <p>I’m strongest in product ideas, iOS apps, and web design. I’m still a beginner at hardware, CAD, and robotics—and the plant project is how I want to start learning them.</p>
-          <div className="skill-switcher" role="group" aria-label="skills">
-            {Object.keys(skillNotes).map((item) => (
-              <button key={item} className={skill === item ? "active" : ""} onClick={() => setSkill(item)} type="button">{item}</button>
-            ))}
-          </div>
-          <p className="skill-note" aria-live="polite">{skillNotes[skill]}</p>
-        </div>
-      </section>
-
-      <section className="next section">
-        <p className="kicker">also in progress</p>
-        <div className="next-grid">
-          <article data-reveal><span>01</span><h3>small-business websites</h3><p>Thoughtful, modern websites for local businesses ready to stand out online.</p></article>
-          <article data-reveal><span>02</span><h3>quixilver 604</h3><p>Taking my next step into competitive robotics with an FRC team.</p></article>
-        </div>
-      </section>
-
-      <section className="contact section">
-        <p>the next idea is already in progress.</p>
-        <h2>follow what<br />i build next.</h2>
-        <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">github.com/aShah2025 <span>↗</span></a>
-      </section>
-
-      <footer>
-        <p>aaditya shah</p>
-        <p>san jose · {time || "local time"}</p>
-        <a href="#top">back up ↑</a>
-      </footer>
     </main>
   );
 }

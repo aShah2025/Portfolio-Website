@@ -6,9 +6,9 @@ const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const SITE_URL = "https://aaditya-builds.vercel.app";
-const SITE_TITLE = "Aaditya Shah | App Developer, Game Creator & Student Builder";
+const SITE_TITLE = "Aaditya Shah | Apps, Games & Experiments";
 const SITE_DESCRIPTION =
-  "Aaditya Shah is a student builder creating iOS and Mac apps, arcade and 3D racing games, websites, and hands-on learning projects in San Jose.";
+  "Aaditya Shah is a high-school student in San Jose building iOS and Mac apps, arcade and 3D racing games, websites, and hands-on experiments.";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -20,7 +20,7 @@ const structuredData = {
       name: SITE_TITLE,
       description: SITE_DESCRIPTION,
       dateCreated: "2026-08-21",
-      dateModified: "2026-09-07",
+      dateModified: "2026-09-28",
       inLanguage: "en-US",
       isPartOf: { "@id": `${SITE_URL}/#website` },
       mainEntity: { "@id": `${SITE_URL}/#aaditya-shah` },

@@ -20,8 +20,8 @@ test("server-renders Aaditya's portfolio and SEO metadata", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /Aaditya Shah \| App Developer, Game Creator/);
-  assert.match(html, /apps, games/);
+  assert.match(html, /Aaditya Shah \| Apps, Games &amp; Experiments/);
+  assert.match(html, /occasional weird experiment/);
   assert.match(html, /Wayfinder/);
   assert.match(html, /WingLab/);
   assert.match(html, /application\/ld\+json/);
@@ -29,12 +29,12 @@ test("server-renders Aaditya's portfolio and SEO metadata", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/);
 });
 
-test("keeps the project deck and portfolio interactions in source", async () => {
+test("keeps the interactive project index, recognition, and soundscape in source", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(page, /className="build-deck"/);
-  assert.match(page, /setFeaturedId/);
-  assert.match(page, /aria-expanded=\{isOpen\}/);
-  assert.match(page, /test the sensor/);
+  assert.match(page, /className="index-panel"/);
+  assert.match(page, /setActiveView/);
+  assert.match(page, /Congressional recognition/);
+  assert.match(page, /new AudioContext\(\)/);
   assert.match(css, /prefers-reduced-motion/);
 });
