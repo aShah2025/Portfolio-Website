@@ -268,7 +268,7 @@ export default function Home() {
           <p>I build apps, games, websites,<br />and whatever I want to learn next.</p>
           <a href="#work">See the work <span>↓</span></a>
         </div>
-        <div className="hero-orbit" aria-hidden="true"><i /><i /><b>AS</b></div>
+        <div className="hero-scene"><Viewer kind="desk" label="Interactive 3D render of a MacBook with a small solar system floating beside it" /></div>
       </section>
 
       <div className="ticker" aria-hidden="true"><div>IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i> IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i></div></div>

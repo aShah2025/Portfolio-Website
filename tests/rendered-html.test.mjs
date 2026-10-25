@@ -36,6 +36,6 @@ test("keeps the oversized interactive project list and recognition in source", a
   assert.match(page, /setOpenProject/);
   assert.match(page, /Congressional/);
   assert.match(page, /aria-expanded/);
-  assert.match(css, /font-size: clamp\(6rem, 15\.2vw, 18rem\)/);
+  assert.match(css, /font-size: clamp\(4\.5rem, 8vw, 9\.5rem\)/);
   assert.match(css, /prefers-reduced-motion/);
 });
