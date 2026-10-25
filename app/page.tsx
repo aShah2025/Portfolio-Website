@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+
+const Viewer = dynamic(() => import("./Viewer"), { ssr: false });
 
 type Project = {
   id: string;
@@ -18,31 +21,55 @@ type Project = {
 
 const projects: Project[] = [
   {
-    id: "wayfinder", number: "01", name: "Wayfinder", tag: "iOS / Navigation", color: "#ff5c35", text: "#0b0b0b",
+    id: "wayfinder", number: "01", name: "Wayfinder", tag: "AI / Navigation", color: "#c98a6e", text: "#16120f",
     short: "Bike routes that actually listen.",
-    description: "Google Maps does not always give cyclists the safest route. Wayfinder lets you describe the ride you want, add filters like safer streets or avoiding highways, and builds the route with the Valhalla API.",
-    stat: "CUSTOM ROUTING",
-    features: ["Describe a ride in plain language", "Filters for safer streets and avoiding highways", "Routes generated with the Valhalla routing API"],
-    facts: [["Platform", "iOS"], ["Focus", "Cyclist safety"], ["Engine", "Valhalla"]],
+    description: "Type how you want to ride, like avoiding hills or a busy road, and Wayfinder builds real bike routes, measures every street on them, and picks the one that fits. The AI only turns your words into settings. The routing, scoring, and explanation are my own code on Valhalla and OpenStreetMap.",
+    stat: "IMPACTHACK 2026",
+    features: ["Plain-English instructions and follow-ups", "Side-by-side routes with climb, busy-road miles, bike-lane %", "Avoid any street by name with automatic re-routing", "Shows its math instead of AI-written excuses"],
+    facts: [["Built for", "ImpactHack 2026"], ["Stack", "Python / Gemini / Valhalla"], ["Area", "California"]],
   },
   {
-    id: "kura", number: "02", name: "Kura", tag: "iOS / Health", color: "#a7ff4f", text: "#0b0b0b",
+    id: "culturerisk", number: "02", name: "CultureRisk", tag: "AI / Hackathon", color: "#9aa7ad", text: "#101417",
+    short: "Know the audience before you greenlight.",
+    description: "An autonomous research agent for film-studio executives, built on Qloo's taste graph. Give it a project and its comparable titles. It plans an investigation across four Qloo endpoints, changes course as evidence comes in, and writes a greenlight memo where every number traces back to a logged Qloo call.",
+    stat: "QLOO HACKATHON",
+    features: ["Plans, acts, observes, and re-plans on its own", "Memo includes a popularity-trap section", "Also available as an MCP tool for other AI agents"],
+    facts: [["Built for", "Qloo Hackathon"], ["Stack", "JavaScript / Netlify"], ["License", "MIT"]],
+  },
+  {
+    id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#a8b39a", text: "#12150f",
+    short: "A better budgeting app.",
+    description: "Built with Rishith Chennupati because we both struggled with budgeting and saving up for things like phones or 3D printers. Sum is built around saving toward things you actually want.",
+    stat: "TWO-PERSON TEAM",
+    features: ["Budgeting designed for students", "Savings goals for real purchases", "Built in Swift with a co-developer"],
+    facts: [["Platform", "iOS"], ["Team", "With Rishith C."], ["Language", "Swift"]],
+  },
+  {
+    id: "kura", number: "04", name: "Kura", tag: "iOS / Health", color: "#b9b79a", text: "#14140e",
     short: "Calories and macros, without the clutter.",
     description: "An iPhone calorie and macro tracker made for the Congressional App Challenge 2025. It keeps daily calories, protein, carbs, and fat quick to log and easy to understand.",
     stat: "BUILT FOR CAC 2025",
     features: ["Daily calorie total at a glance", "Protein, carbs, and fat tracked together", "Fast logging with no clutter"],
-    facts: [["Platform", "iOS"], ["Built for", "CAC 2025"], ["Focus", "Simplicity"]],
+    facts: [["Platform", "iOS / SwiftUI"], ["Built for", "CAC 2025"], ["Focus", "Simplicity"]],
   },
   {
-    id: "refill", number: "03", name: "Refill", tag: "iOS / Education", color: "#7c67ff", text: "#ffffff",
-    short: "Classroom supplies, shared nearby.",
-    description: "An iOS resource network where educators can list, find, and share extra classroom supplies, because teachers should not have to buy every basic themselves.",
-    stat: "LOCAL RESOURCE NETWORK",
-    features: ["List extra supplies in seconds", "Find what you need from nearby teachers", "Built around sharing, not buying"],
-    facts: [["Platform", "iOS"], ["Audience", "Educators"], ["Idea", "Local sharing"]],
+    id: "refill", number: "05", name: "Refill", tag: "iOS / Education", color: "#8f8ba3", text: "#ffffff",
+    short: "No teacher should pay out of their own pocket.",
+    description: "A SwiftUI app for drafting classroom supply requests and helping supporters discover projects. It reads live California DonorsChoose listings through a Cloudflare Worker, parses plain-English requests with AI, and labels clearly when it is showing sample data instead of live data.",
+    stat: "CLASSROOM SUPPLIES",
+    features: ["Draft a supply request in plain English", "Browse California classroom projects", "Stripe test-mode checkout with verified receipts"],
+    facts: [["Platform", "iOS 17+"], ["Backend", "Cloudflare Worker"], ["Data", "DonorsChoose"]],
   },
   {
-    id: "turbo-lane", number: "04", name: "Turbo Lane", tag: "Game / Arcade", color: "#ffd83d", text: "#0b0b0b",
+    id: "coursefit", number: "06", name: "CourseFit", tag: "Web / Scheduling", color: "#b3a58f", text: "#16130e",
+    short: "Master schedules without the chaos.",
+    description: "An automated master scheduling engine for schools. It captures student course selections and generates conflict-free schedules based on teacher availability and classroom capacity.",
+    stat: "SCHOOL SCHEDULING",
+    features: ["Collects student course selections", "Respects teacher availability", "Accounts for classroom capacity"],
+    facts: [["Problem", "Manual scheduling"], ["Inputs", "Courses / teachers / rooms"], ["Output", "Conflict-free schedule"]],
+  },
+  {
+    id: "turbo-lane", number: "07", name: "Turbo Lane", tag: "Game / Arcade", color: "#c4b27a", text: "#14110a",
     short: "A vertical racer built for one more run.",
     description: "A fast vertical arcade game about dodging traffic, chasing a higher score, crashing, and immediately trying again.",
     stat: "PLAYABLE",
@@ -50,7 +77,7 @@ const projects: Project[] = [
     facts: [["Genre", "Arcade"], ["Status", "Playable"], ["Loop", "One more run"]],
   },
   {
-    id: "formula-racer", number: "05", name: "Formula Racer", tag: "Game / 3D Racing", color: "#248cff", text: "#ffffff",
+    id: "formula-racer", number: "08", name: "Formula Racer", tag: "Game / 3D Racing", color: "#7d93a8", text: "#ffffff",
     short: "A 3D racing game in progress.",
     description: "A 3D racing game loosely inspired by the speed, cameras, and race-weekend energy of Formula 1 games. Still building it. Still improving the lap time.",
     stat: "IN DEVELOPMENT",
@@ -58,7 +85,7 @@ const projects: Project[] = [
     facts: [["Genre", "3D racing"], ["Status", "In development"], ["Inspired by", "F1 games"]],
   },
   {
-    id: "winglab", number: "06", name: "WingLab", tag: "macOS / Physics", color: "#d8f1ff", text: "#0b0b0b",
+    id: "winglab", number: "09", name: "WingLab", tag: "macOS / Physics", color: "#c3ccd0", text: "#101417",
     short: "An aerodynamics playground for Mac.",
     description: "Change a wing, adjust airflow and angle of attack, then compare lift, drag, and efficiency without needing an actual wind tunnel.",
     stat: "AERODYNAMICS SIM",
@@ -69,9 +96,16 @@ const projects: Project[] = [
 
 const awards = [
   { year: "2026", title: "Congressional App Challenge", note: "Competing again", kind: "IN PROGRESS", href: "#recognition" },
+  { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" },
   { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025", kind: "AWARD", href: "#recognition" },
-  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant", kind: "HACKATHON", href: "#awards" },
+  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" },
   { year: "ONGOING", title: "Policy Debate & Congress", note: "Competitive debater in two events", kind: "ACTIVITY", href: "#awards" },
+  { year: "NOW", title: "Kung Fu Red Belt", note: "Testing for black belt, expected April 2027", kind: "MARTIAL ARTS", href: "#awards" },
+  { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
+  { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
+  { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE", href: "#awards" },
+  { year: "7TH GRADE", title: "Geography Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
+  { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
 ];
 
 function useReveal() {
@@ -174,6 +208,33 @@ function Art({ id }: { id: string }) {
           <path d="M400 150V70M385 88 400 66 415 88" strokeWidth="5" className="lift" />
         </svg>
       );
+    case "culturerisk":
+      return (
+        <svg {...common}>
+          <g className="links" strokeWidth="2" strokeDasharray="5 9"><path d="M400 200 170 110M400 200 640 90M400 200 150 310M400 200 660 300M170 110 150 310M640 90 660 300" /></g>
+          {[[400, 200, 40], [170, 110, 22], [640, 90, 26], [150, 310, 20], [660, 300, 24]].map(([x, y, r], i) => (
+            <g className="node" key={i} style={{ ["--d" as string]: `${i * 0.2}s` }}><circle cx={x} cy={y} r={r} fill={i === 0 ? "currentColor" : "var(--project-color)"} strokeWidth="4" /></g>
+          ))}
+          <circle className="pulse" cx="400" cy="200" r="40" strokeWidth="3" />
+        </svg>
+      );
+    case "sum":
+      return (
+        <svg {...common}>
+          <path d="M60 340H760" strokeWidth="4" />
+          <path className="draw" pathLength="1" d="M70 300 C170 290 220 250 300 255 S430 190 520 170 S660 90 740 70" strokeWidth="9" />
+          {[0, 1, 2, 3, 4].map((i) => <rect key={i} className="coin" x={110 + i * 130} y={330 - i * 38} width="70" height={i * 38 + 10} fill="var(--project-color)" strokeWidth="3" style={{ ["--d" as string]: `${i * 0.12}s` }} />)}
+        </svg>
+      );
+    case "coursefit":
+      return (
+        <svg {...common}>
+          {Array.from({ length: 5 }, (_, c) => Array.from({ length: 5 }, (_, r) => {
+            const on = (c * 3 + r * 2) % 5 !== 0;
+            return <rect key={`${c}${r}`} className={on ? "slot" : "slot off"} x={90 + c * 130} y={50 + r * 62} width="112" height="48" rx="6" fill={on ? "currentColor" : "none"} strokeWidth="2.5" style={{ ["--d" as string]: `${(c + r) * 0.1}s` }} />;
+          }))}
+        </svg>
+      );
     default:
       return null;
   }
@@ -193,6 +254,7 @@ export default function Home() {
         <div className="nav-links">
           <a href="#work">Work</a>
           <a href="#about">About</a>
+          <a href="#debate">Debate</a>
           <a href="#recognition">Recognition</a>
           <a href="#awards">Awards</a>
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
@@ -200,7 +262,7 @@ export default function Home() {
       </nav>
 
       <section className="hero" id="top">
-        <div className="hero-meta"><span>HIGH-SCHOOL STUDENT</span><span>SAN JOSE, CA</span><span>PORTFOLIO / 2026</span></div>
+        <div className="hero-meta"><span>HIGH-SCHOOL STUDENT</span><span>LELAND HIGH · SAN JOSE, CA</span><span>PORTFOLIO / 2026</span></div>
         <h1 aria-label="Aaditya Shah"><span><em>Aaditya</em></span><span><em>Shah<i>.</i></em></span></h1>
         <div className="hero-bottom">
           <p>I build apps, games, websites,<br />and whatever I want to learn next.</p>
@@ -209,13 +271,13 @@ export default function Home() {
         <div className="hero-orbit" aria-hidden="true"><i /><i /><b>AS</b></div>
       </section>
 
-      <div className="ticker" aria-hidden="true"><div>IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i> IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i></div></div>
+      <div className="ticker" aria-hidden="true"><div>IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i> IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i></div></div>
 
       <section className="work" id="work">
         <header className="section-head" data-reveal>
           <span>01 / SELECTED WORK</span>
-          <h2>Things I&apos;ve<br />made so far.</h2>
-          <p>Click any project. They are supposed to be big.</p>
+          <h2>Things I&apos;ve<br />built so far.</h2>
+          <p>Nine projects across iOS, AI agents, web, and games. Open any one for what it does and how it works.</p>
         </header>
 
         <div className="project-list">
@@ -248,17 +310,52 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="about" id="about">
-        <div className="about-kicker">02 / ABOUT</div>
-        <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
-        <div className="about-copy" data-reveal>
-          <p>I&apos;m a high-school student in San Jose. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
-          <p>Outside of code I debate policy and congress, which is where I learn to take a messy problem and argue for a clear solution. I would rather show what I&apos;m learning than pretend I already know everything.</p>
+      <section className="lab" id="lab">
+        <header className="lab-head" data-reveal><span>02 / RENDERS</span><h2>On the<br />bench.</h2></header>
+        <div className="lab-grid">
+          <figure className="render wide" data-reveal>
+            <Viewer kind="printer" label="Interactive 3D render of an open-frame 3D printer printing a vase" />
+            <figcaption><b>Open-frame printer, mid-print</b><span>Modeled in three.js. The nozzle follows the real tool path: the bed slides, the head sweeps, and the gantry climbs as the vase grows. Drag to orbit.</span></figcaption>
+          </figure>
+          <figure className="render" data-reveal>
+            <Viewer kind="wing" label="Interactive 3D render of a wing in airflow" />
+            <figcaption><b>Wing in airflow</b><span>The idea behind WingLab: a cambered airfoil with endplates and particles bending around it.</span></figcaption>
+          </figure>
+          <div className="render note" data-reveal>
+            <p>Why a printer?</p>
+            <span>I&apos;m newer to hardware and CAD. Rendering the machines I&apos;m learning to use is how I figure out how they actually work.</span>
+          </div>
         </div>
       </section>
 
+      <section className="about" id="about">
+        <div className="about-kicker">03 / ABOUT</div>
+        <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
+        <div className="about-copy" data-reveal>
+          <p>I&apos;m a student at Leland High School in San Jose, and I went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
+          <p>Outside of code I debate policy and congress, train kung fu (red belt now, black belt test expected April 2027), and I&apos;m exploring the Leland Hackathon Club and Leland Motorsport Club, which is where I learn to take a messy problem and argue for a clear solution. I would rather show what I&apos;m learning than pretend I already know everything.</p>
+        </div>
+      </section>
+
+      <section className="debate" id="debate">
+        <header className="debate-head" data-reveal><span>04 / DEBATE</span><h2>Argue it,<br />then build it.</h2></header>
+        <div className="debate-grid">
+          <article data-reveal>
+            <h3>Policy debate</h3>
+            <p>A two-person event built around one resolution for the whole season. It rewards heavy research, tight evidence, fast delivery, and the ability to defend a position and then flip and attack it.</p>
+            <ul><li>Constructive speeches and rebuttals</li><li>Cross-examination under pressure</li><li>Evidence-driven case writing</li></ul>
+          </article>
+          <article data-reveal>
+            <h3>Congress</h3>
+            <p>A mock legislature. Every round you work through real bills and resolutions: giving speeches for or against, answering questions from other legislators, and persuading a room that does not have to agree with you.</p>
+            <ul><li>Speeches on proposed legislation</li><li>Questioning and floor debate</li><li>Writing and sponsoring legislation</li></ul>
+          </article>
+        </div>
+        <p className="debate-line" data-reveal>Debate is where I learned to explain a messy problem clearly, which is most of what building a useful app comes down to.</p>
+      </section>
+
       <section className="recognition" id="recognition">
-        <div className="recognition-label">03 / RECOGNITION</div>
+        <div className="recognition-label">05 / RECOGNITION</div>
         <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
         <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
         <div className="recognition-footer"><span>Congressional App Challenge 2025 recognition. Competing again in 2026.</span><span>2025 / 2026</span></div>
@@ -266,7 +363,7 @@ export default function Home() {
 
       <section className="awards" id="awards">
         <header className="awards-head" data-reveal>
-          <span>04 / AWARDS &amp; ACTIVITIES</span>
+          <span>06 / AWARDS &amp; ACTIVITIES</span>
           <h2>Beyond<br />the code.</h2>
         </header>
         <ul className="award-list">
