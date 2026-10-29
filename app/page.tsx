@@ -100,7 +100,9 @@ const awards = [
   { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025", kind: "AWARD", href: "#recognition" },
   { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" },
   { year: "ONGOING", title: "Policy Debate & Congress", note: "Competitive debater in two events", kind: "ACTIVITY", href: "#awards" },
-  { year: "NOW", title: "Kung Fu Red Belt", note: "Testing for black belt, expected April 2027", kind: "MARTIAL ARTS", href: "#awards" },
+  { year: "NOW", title: "Kung Fu Red-Black Belt", note: "Five years of training. Testing for black belt, expected April 2027", kind: "MARTIAL ARTS", href: "#awards" },
+  { year: "NOW", title: "Driver's License", note: "Working toward it", kind: "IN PROGRESS", href: "#awards" },
+  { year: "GOAL", title: "Private Pilot Licence", note: "The long-term goal", kind: "IN PROGRESS", href: "#goal" },
   { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
   { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
   { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE", href: "#awards" },
@@ -192,6 +194,25 @@ function statementWords(p: number, el: HTMLElement) {
     const o = Math.min(1, Math.max(0, (p - (i / words.length) * 0.8 - 0.04) / 0.07));
     w.style.opacity = String(0.16 + 0.84 * o);
   });
+}
+
+function CountUp({ to }: { to: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = String(to); return; }
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const step = (t: number) => { const k = Math.min(1, (t - t0) / 1600); el.textContent = String(Math.round(to * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }, { threshold: 0.5 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to]);
+  return <span ref={ref}>{to}</span>;
 }
 
 function Art({ id }: { id: string }) {
@@ -323,6 +344,7 @@ export default function Home() {
           <a href="#work">Work</a>
           <a href="#about">About</a>
           <a href="#debate">Debate</a>
+          <a href="#kungfu">Kung Fu</a>
           <a href="#recognition">Recognition</a>
           <a href="#awards">Awards</a>
           <a href="#goal">Goal</a>
@@ -356,7 +378,7 @@ export default function Home() {
 
       <section className="statement" ref={stRef}>
         <div className="pin-sticky">
-          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. And I'm working toward my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
+          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. And I'm working toward my driver's licence, then my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
         </div>
       </section>
 
@@ -420,7 +442,7 @@ export default function Home() {
         <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
         <div className="about-copy" data-reveal>
           <p>I&apos;m a student at Leland High School in San Jose, and I went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
-          <p>Outside of code I debate policy and congress, train kung fu (red belt now, black belt test expected April 2027), and I&apos;m exploring the Leland Hackathon Club and Leland Motorsport Club, which is where I learn to take a messy problem and argue for a clear solution. I would rather show what I&apos;m learning than pretend I already know everything.</p>
+          <p>Outside of code I debate policy and congress, train kung fu (five years in, red-black belt now, black belt test expected April 2027), and I&apos;m exploring the Leland Hackathon Club and Leland Motorsport Club, which is where I learn to take a messy problem and argue for a clear solution. I would rather show what I&apos;m learning than pretend I already know everything.</p>
         </div>
       </section>
 
@@ -441,8 +463,26 @@ export default function Home() {
         <p className="debate-line" data-reveal>Debate is where I learned to explain a messy problem clearly, which is most of what building a useful app comes down to.</p>
       </section>
 
+      <section className="kungfu" id="kungfu">
+        <header className="kf-head" data-reveal><span>05 / KUNG FU</span><h2><CountUp to={5} /> years<br />on the mat.</h2></header>
+        <div className="kf-stats">
+          <div data-reveal><b>5 years</b><span>Training</span></div>
+          <div data-reveal><b>Red-black belt</b><span>Current rank</span></div>
+          <div data-reveal><b>April 2027</b><span>Black belt test, expected</span></div>
+        </div>
+        <div className="kf-track" data-reveal aria-label="Progress toward black belt">
+          <i><u /></i>
+          <ol>
+            <li><b>5 years ago</b><span>Started training</span></li>
+            <li className="here"><b>Now</b><span>Red-black belt</span></li>
+            <li><b>April 2027</b><span>Black belt test</span></li>
+          </ol>
+        </div>
+        <p className="kf-copy" data-reveal>Five years of showing up, repeating the basics, and testing for the next belt. The black belt test is the next milestone.</p>
+      </section>
+
       <section className="recognition" id="recognition">
-        <div className="recognition-label">05 / RECOGNITION</div>
+        <div className="recognition-label">06 / RECOGNITION</div>
         <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
         <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
         <div className="recognition-footer"><span>Congressional App Challenge 2025 recognition. Competing again in 2026.</span><span>2025 / 2026</span></div>
@@ -450,7 +490,7 @@ export default function Home() {
 
       <section className="awards" id="awards">
         <header className="awards-head" data-reveal>
-          <span>06 / AWARDS &amp; ACTIVITIES</span>
+          <span>07 / AWARDS &amp; ACTIVITIES</span>
           <h2>Beyond<br />the code.</h2>
         </header>
         <ul className="award-list">
@@ -471,7 +511,7 @@ export default function Home() {
         <div className="pin-sticky">
           <Viewer kind="flight" progress={flightP} label="3D single-engine airplane flying over terrain as you scroll" />
           <div className="pin-text">
-            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>07 / THE GOAL</small>Private pilot licence.</p>
+            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>08 / THE GOAL</small>Private pilot licence.</p>
             <p className="stage" data-in="0.24" data-out="0.46">Ground school first.</p>
             <p className="stage" data-in="0.5" data-out="0.72">Then the first solo.</p>
             <p className="stage" data-in="0.76" data-out="1.1">Then the checkride.</p>
