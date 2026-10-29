@@ -368,9 +368,9 @@ export default function Home() {
         <div className="pin-sticky">
           <Viewer kind="mac" progress={macP} label="3D MacBook that opens as you scroll while the camera orbits around it" />
           <div className="pin-text">
-            <p className="stage" data-in="-0.1" data-out="0.24">Built on a laptop.</p>
-            <p className="stage" data-in="0.3" data-out="0.56">Open it up.</p>
-            <p className="stage" data-in="0.64" data-out="1.1">Apps, agents, and games.</p>
+            <p className="stage" data-in="-0.1" data-out="0.24">Hi, I&apos;m Aaditya.</p>
+            <p className="stage" data-in="0.3" data-out="0.56">Student at Leland High.</p>
+            <p className="stage" data-in="0.64" data-out="1.1">I build apps, agents, and games.</p>
           </div>
           <span className="scroll-hint" aria-hidden="true">Scroll</span>
         </div>
@@ -516,6 +516,7 @@ export default function Home() {
             <p className="stage" data-in="0.5" data-out="0.72">Then the first solo.</p>
             <p className="stage" data-in="0.76" data-out="1.1">Then the checkride.</p>
           </div>
+          <p className="credit">Map: © OpenStreetMap contributors (ODbL), AWS Terrain Tiles</p>
           <div className="hud" aria-hidden="true">
             <div><span>ALT</span><b data-alt>0</b><span>FT</span></div>
             <div><span>HDG</span><b data-hdg>270</b></div>

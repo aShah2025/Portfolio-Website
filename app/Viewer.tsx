@@ -179,6 +179,16 @@ function buildMac(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(14.1, 8.8), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.rotation.x = Math.PI / 2; screen.position.set(0, -0.05, 5.2); lid.add(screen);
 
+  const lc = document.createElement("canvas"); lc.width = lc.height = 256;
+  const lg = lc.getContext("2d")!;
+  lg.fillStyle = "#f2f2f4";
+  lg.beginPath(); lg.arc(100, 150, 58, 0, TAU); lg.arc(156, 150, 58, 0, TAU); lg.fill();
+  lg.fillRect(100, 100, 56, 108); lg.beginPath(); lg.arc(128, 196, 48, 0, TAU); lg.fill();
+  lg.globalCompositeOperation = "destination-out"; lg.beginPath(); lg.arc(208, 118, 30, 0, TAU); lg.fill();
+  lg.globalCompositeOperation = "source-over"; lg.save(); lg.translate(142, 56); lg.rotate(-0.7); lg.beginPath(); lg.ellipse(0, 0, 11, 30, 0, 0, TAU); lg.fill(); lg.restore();
+  const logoTex = new THREE.CanvasTexture(lc); logoTex.colorSpace = THREE.SRGBColorSpace;
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ map: logoTex, transparent: true, opacity: 0.85 }));
+  logo.rotation.x = -Math.PI / 2; logo.position.set(0, 0.356, 5.2); lid.add(logo);
   return { mac, lid, mat };
 }
 
@@ -254,9 +264,9 @@ function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
 }
 
 function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
-  const SKY = "#9aa5ad";
+  const SKY = "#14181d";
   scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(SKY, 70, 300);
+  scene.fog = new THREE.Fog(SKY, 140, 520);
   const mat = (color: string, rough = 0.55, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
   const rb = (w: number, h: number, d: number, m: THREE_NS.Material, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), m);
 
@@ -271,76 +281,68 @@ function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d:
   const wing = rb(10, 0.14, 1.7, white, 0.06); wing.position.set(0, 0.95, -0.4); body.add(wing);
   const wingTip = (x: number) => { const t = rb(0.5, 0.15, 1.7, stripe, 0.06); t.position.set(x, 0.95, -0.4); body.add(t); };
   wingTip(-5.1); wingTip(5.1);
+  plane.scale.setScalar(0.6);
   for (const x of [-1, 1]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), grey); st.position.set(x * 1.9, 0.0, -0.3); st.rotation.z = x * 0.9; body.add(st); }
   const hstab = rb(3.4, 0.1, 0.8, white, 0.04); hstab.position.set(0, 0.2, 4.8); body.add(hstab);
   const fin = rb(0.1, 1.2, 0.95, white, 0.04); fin.position.set(0, 0.8, 4.75); fin.rotation.x = -0.25; body.add(fin);
   const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.55, 0.9, 24), grey); cowl.rotation.x = Math.PI / 2; cowl.position.z = -2.25; body.add(cowl);
   const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), stripe); spinner.rotation.x = -Math.PI / 2; spinner.position.z = -2.95; body.add(spinner);
   const prop = new THREE.Group(); prop.position.z = -2.75; body.add(prop);
-  const blade = rb(0.16, 2.7, 0.05, mat("#1c1d20", 0.6), 0.02); prop.add(blade);
+  prop.add(rb(0.16, 2.7, 0.05, mat("#1c1d20", 0.6), 0.02));
   const gear = new THREE.Group(); body.add(gear);
   for (const [x, z] of [[-0.9, -0.6], [0.9, -0.6], [0, -2]] as [number, number][]) {
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8), grey); leg.position.set(x, -0.8, z); gear.add(leg);
     const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.14, 20), mat("#1c1d20", 0.8)); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, -1.25, z); gear.add(wheel);
   }
-  body.traverse((o) => { (o as THREE_NS.Mesh).castShadow = false; });
 
-  // --- terrain scrolls under the plane
-  const LEN = 760, WID = 340;
-  const terrain = new THREE.Group(); scene.add(terrain);
-  const geo = new THREE.PlaneGeometry(WID, LEN, 110, 260);
-  geo.rotateX(-Math.PI / 2); geo.translate(0, 0, -LEN / 2 + 120);
-  const posAttr = geo.attributes.position as THREE_NS.BufferAttribute;
-  const colors = new Float32Array(posAttr.count * 3);
-  const col = new THREE.Color();
-  const END = -560;
+  // --- real map: San Jose from OpenStreetMap + terrain tiles, drawn as a point cloud
+  const U = 1 / 14; // scene units per meter
+  const city = new THREE.Group(); scene.add(city);
+  const START_Z = 2000; // meters south of map center where the flight begins
+  let lelandMarker: THREE_NS.Object3D | null = null;
+  let mapLen = 9000;
+  fetch("/data/sj.meta.json").then((r) => r.json()).then(async (meta) => {
+    const [pb, tb] = await Promise.all([fetch("/data/sj.pos.bin").then((r) => r.arrayBuffer()), fetch("/data/sj.type.bin").then((r) => r.arrayBuffer())]);
+    const q = new Int16Array(pb), ty = new Uint8Array(tb), n = ty.length;
+    mapLen = meta.length;
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    const palette = [new THREE.Color("#6f8580"), new THREE.Color("#9db4c4"), new THREE.Color("#f0dfb4")];
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = q[i * 3] * 0.25 * U; pos[i * 3 + 1] = q[i * 3 + 1] * 0.1 * U * 1.6; pos[i * 3 + 2] = q[i * 3 + 2] * 0.25 * U;
+      const c = palette[ty[i]]; col.set([c.r, c.g, c.b], i * 3);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    city.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95 })));
+    // marker for Leland High School
+    const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+    const x = c.getContext("2d")!; x.fillStyle = "#ece8df"; x.font = "700 52px Helvetica, Arial, sans-serif"; x.textAlign = "center"; x.fillText("Leland High", 256, 70);
+    x.fillStyle = "#a5654c"; x.beginPath(); x.arc(256, 104, 9, 0, TAU); x.fill();
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, fog: false }));
+    sp.scale.set(14, 3.5, 1); sp.position.set(meta.leland.x * U, meta.leland.y * 0.1 * U * 1.6 + 5, meta.leland.z * U); city.add(sp); lelandMarker = sp;
+  }).catch(() => {});
+
   const sm = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  for (let i = 0; i < posAttr.count; i++) {
-    const x = posAttr.getX(i), z = posAttr.getZ(i);
-    let h = 7 * Math.sin(x * 0.03 + 1.3) * Math.cos(z * 0.021) + 4 * Math.sin(x * 0.07 + z * 0.045) + 2 * Math.sin(z * 0.11 - x * 0.06) + 9 * Math.max(0, Math.sin(z * 0.012 + x * 0.008));
-    const flat = Math.min(sm(14, 60, Math.abs(x)) + sm(35, 120, Math.min(Math.abs(z), Math.abs(z - END))), 1);
-    h = h * flat * (0.4 + 0.6 * sm(0, 40, Math.abs(x))) + (1 - flat) * 0;
-    posAttr.setY(i, h);
-    col.set(h > 9 ? "#8c8a80" : h > 4 ? "#a1a58b" : h > 0.6 ? "#8f9d7f" : "#7f8f78");
-    col.offsetHSL(0, 0, (Math.sin(x * 0.4) * Math.cos(z * 0.4)) * 0.015);
-    colors.set([col.r, col.g, col.b], i * 3);
-  }
-  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
-  const land = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
-  terrain.add(land);
-  const runway = (z: number) => {
-    const r = new THREE.Mesh(new THREE.BoxGeometry(11, 0.1, 90), mat("#3a3d42", 0.9)); r.position.set(0, 0.05, z); terrain.add(r);
-    for (let i = -4; i <= 4; i++) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 5), mat("#e8e6e0", 0.8)); d.position.set(0, 0.08, z + i * 9); terrain.add(d); }
-  };
-  runway(-5); runway(END + 5);
-  // clouds
-  const cloudM = new THREE.MeshStandardMaterial({ color: "#f1efe8", roughness: 1, transparent: true, opacity: 0.9, flatShading: true });
-  for (let i = 0; i < 16; i++) {
-    const g = new THREE.Group();
-    for (let k = 0; k < 5; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(3 + Math.random() * 3, 1), cloudM); b.position.set((k - 2) * 4 + Math.random() * 2, Math.random() * 2, Math.random() * 3); b.scale.y = 0.55; g.add(b); }
-    g.position.set((Math.random() - 0.5) * 220, 30 + Math.random() * 14, -Math.random() * 640 + 80); terrain.add(g);
-  }
-
-  const DIST = 540;
-  const alt01 = (p: number) => sm(0.14, 0.4, p) * (1 - sm(0.72, 0.94, p));
+  const DIST = 4400 * U; // flight distance in scene units (4.4 km north)
+  const alt01 = (p: number) => 0.18 + 0.82 * sm(0.0, 0.3, p) * (1 - 0.35 * sm(0.75, 1, p));
+  void lelandMarker; void mapLen;
   const update = (dt: number, _still: boolean, p: number) => {
     const a = alt01(p), ahead = alt01(Math.min(1, p + 0.01)), climbing = ahead - a;
-    terrain.position.z = p * DIST;
-    plane.position.y = 1.7 + a * 22;
+    city.position.set(0, -4, -START_Z * U + p * DIST); // the map slides under the plane, heading north
+    plane.position.y = 3 + a * 26;
     plane.rotation.x = THREE.MathUtils.clamp(climbing * 90, -0.35, 0.4) * -1;
-    plane.rotation.z = Math.sin(p * 14) * 0.2 * sm(0.2, 0.3, p) * (1 - sm(0.7, 0.8, p));
+    plane.rotation.z = Math.sin(p * 12) * 0.18 * sm(0.1, 0.25, p);
     prop.rotation.z += dt * 40;
-    gear.visible = a < 0.08 || p > 0.9;
+    gear.visible = false;
   };
   const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
     const f = Math.max(1, 1.2 / aspect);
     const y = plane.position.y;
     const az = THREE.MathUtils.lerp(0.9, -0.5, p) + Math.sin(p * 5) * 0.12;
     const rad = (16 + 5 * Math.sin(p * Math.PI)) * f;
-    camera.position.set(Math.sin(az) * rad, y + 3.2 + 3 * Math.sin(p * Math.PI), Math.cos(az) * rad);
-    camera.lookAt(0, y + 0.2, 0);
+    camera.position.set(Math.sin(az) * rad, y + 7 + 4 * Math.sin(p * Math.PI), Math.cos(az) * rad);
+    camera.lookAt(0, y - 2, -4);
   };
-  return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(14, 5, 14), scripted: true, ft: (p: number) => Math.round(alt01(p) * 3500) };
+  return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(14, 5, 14) };
 }
 
 export default function Viewer({ kind, label, progress }: { kind: Scene; label: string; progress?: { current: number } }) {
