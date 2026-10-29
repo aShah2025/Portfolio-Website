@@ -139,6 +139,61 @@ function useScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
+function usePin(ref: React.RefObject<HTMLElement | null>, onP?: (p: number, el: HTMLElement) => void) {
+  const prog = useRef(0);
+  const cb = useRef(onP);
+  useEffect(() => { cb.current = onP; });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const stages = Array.from(el.querySelectorAll<HTMLElement>("[data-in]"));
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      const max = r.height - window.innerHeight;
+      const p = Math.min(1, Math.max(0, max > 0 ? -r.top / max : 0));
+      prog.current = p;
+      for (const st of stages) {
+        const a = Number(st.dataset.in), b = Number(st.dataset.out);
+        const o = Math.min(1, Math.max(0, (p - a) / 0.05)) * Math.min(1, Math.max(0, (b - p) / 0.05));
+        st.style.opacity = String(o);
+        st.style.transform = `translateY(${(1 - o) * 26}px)`;
+      }
+      cb.current?.(p, el);
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    tick();
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); if (raf) cancelAnimationFrame(raf); };
+  }, [ref]);
+  return prog;
+}
+
+const alt01 = (p: number) => {
+  const sm = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  return sm(0.14, 0.4, p) * (1 - sm(0.72, 0.94, p));
+};
+
+function flightHud(p: number, el: HTMLElement) {
+  const alt = el.querySelector<HTMLElement>("[data-alt]");
+  if (alt) alt.textContent = Math.round(alt01(p) * 3500).toLocaleString("en-US");
+  const hdg = el.querySelector<HTMLElement>("[data-hdg]");
+  if (hdg) hdg.textContent = String(Math.round(((270 + Math.sin(p * 5) * 25 + p * 20) % 360 + 360) % 360)).padStart(3, "0");
+  el.querySelectorAll<HTMLElement>("[data-cp]").forEach((c) => c.classList.toggle("on", p >= Number(c.dataset.cp)));
+  const bar = el.querySelector<HTMLElement>("[data-bar]");
+  if (bar) bar.style.transform = `scaleX(${p})`;
+}
+
+function statementWords(p: number, el: HTMLElement) {
+  const words = el.querySelectorAll<HTMLElement>("[data-w]");
+  words.forEach((w, i) => {
+    const o = Math.min(1, Math.max(0, (p - (i / words.length) * 0.8 - 0.04) / 0.07));
+    w.style.opacity = String(0.16 + 0.84 * o);
+  });
+}
+
 function Art({ id }: { id: string }) {
   const common = { viewBox: "0 0 800 400", preserveAspectRatio: "xMidYMid slice", fill: "none", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" } as const;
   switch (id) {
@@ -243,13 +298,26 @@ function Art({ id }: { id: string }) {
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>("wayfinder");
   const progress = useRef<HTMLDivElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const macRef = useRef<HTMLElement>(null);
+  const stRef = useRef<HTMLElement>(null);
+  const flightRef = useRef<HTMLElement>(null);
   useReveal();
   useScrollProgress(progress);
+  const macP = usePin(macRef);
+  usePin(stRef, statementWords);
+  const flightP = usePin(flightRef, flightHud);
+  useEffect(() => {
+    const on = () => nav.current?.classList.toggle("scrolled", window.scrollY > 60);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
 
   return (
     <main>
       <div className="progress" ref={progress} aria-hidden="true" />
-      <nav className="topbar" aria-label="Main navigation">
+      <nav className="topbar" aria-label="Main navigation" ref={nav}>
         <a className="nav-name" href="#top">AS</a>
         <div className="nav-links">
           <a href="#work">Work</a>
@@ -257,6 +325,7 @@ export default function Home() {
           <a href="#debate">Debate</a>
           <a href="#recognition">Recognition</a>
           <a href="#awards">Awards</a>
+          <a href="#goal">Goal</a>
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
         </div>
       </nav>
@@ -272,6 +341,24 @@ export default function Home() {
       </section>
 
       <div className="ticker" aria-hidden="true"><div>IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i> IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i></div></div>
+
+      <section className="pin pin-mac" ref={macRef} aria-label="Scroll story: a laptop opening">
+        <div className="pin-sticky">
+          <Viewer kind="mac" progress={macP} label="3D MacBook that opens as you scroll while the camera orbits around it" />
+          <div className="pin-text">
+            <p className="stage" data-in="-0.1" data-out="0.24">Built on a laptop.</p>
+            <p className="stage" data-in="0.3" data-out="0.56">Open it up.</p>
+            <p className="stage" data-in="0.64" data-out="1.1">Apps, agents, and games.</p>
+          </div>
+          <span className="scroll-hint" aria-hidden="true">Scroll</span>
+        </div>
+      </section>
+
+      <section className="statement" ref={stRef}>
+        <div className="pin-sticky">
+          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. And I'm working toward my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
+        </div>
+      </section>
 
       <section className="work" id="work">
         <header className="section-head" data-reveal>
@@ -378,6 +465,24 @@ export default function Home() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="pin pin-flight" id="goal" ref={flightRef} aria-label="Scroll story: working toward a private pilot licence">
+        <div className="pin-sticky">
+          <Viewer kind="flight" progress={flightP} label="3D single-engine airplane flying over terrain as you scroll" />
+          <div className="pin-text">
+            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>07 / THE GOAL</small>Private pilot licence.</p>
+            <p className="stage" data-in="0.24" data-out="0.46">Ground school first.</p>
+            <p className="stage" data-in="0.5" data-out="0.72">Then the first solo.</p>
+            <p className="stage" data-in="0.76" data-out="1.1">Then the checkride.</p>
+          </div>
+          <div className="hud" aria-hidden="true">
+            <div><span>ALT</span><b data-alt>0</b><span>FT</span></div>
+            <div><span>HDG</span><b data-hdg>270</b></div>
+            <ol><li data-cp="0.05">Ground school</li><li data-cp="0.45">First solo</li><li data-cp="0.8">Checkride</li></ol>
+            <i><u data-bar /></i>
+          </div>
+        </div>
       </section>
 
       <footer className="footer">

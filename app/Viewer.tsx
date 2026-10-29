@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import type * as THREE_NS from "three";
 
-type Scene = "printer" | "wing" | "desk";
+type Scene = "printer" | "wing" | "desk" | "mac" | "flight";
+type Frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => void;
 type T = typeof THREE_NS;
 
 const TAU = Math.PI * 2;
@@ -148,12 +149,11 @@ function wingScene(THREE: T, scene: THREE_NS.Scene) {
   return { update, target: new THREE.Vector3(0, 0, 0), camera: new THREE.Vector3(44, 20, 62) };
 }
 
-function deskScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
+function buildMac(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry) {
   const mat = (color: string, rough = 0.5, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
   const silver = mat("#b4b7bb", 0.32, 1), dark = mat("#1b1c1f", 0.6), key = mat("#25272b", 0.55), pad = mat("#a3a6aa", 0.35, 1);
   const rb = (w: number, h: number, d: number, m: THREE_NS.Material, r = 0.15) => { const o = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), m); o.castShadow = o.receiveShadow = true; return o; };
-  const root = new THREE.Group(); scene.add(root);
-  const mac = new THREE.Group(); root.add(mac);
+  const mac = new THREE.Group();
 
   const base = rb(15, 0.5, 10.4, silver, 0.2); base.position.y = 0.25; mac.add(base);
   const deck = rb(14.2, 0.06, 5.7, dark, 0.05); deck.position.set(0, 0.52, -1.9); mac.add(deck);
@@ -178,6 +178,14 @@ function deskScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: n
   cards.forEach(([col, label], i) => { g.fillStyle = col; g.fillRect(84 + i * 360, 580, 330, 110); g.fillStyle = "#16120f"; g.font = "700 34px Helvetica, Arial, sans-serif"; g.fillText(label, 108 + i * 360, 646); });
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(14.1, 8.8), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.rotation.x = Math.PI / 2; screen.position.set(0, -0.05, 5.2); lid.add(screen);
+
+  return { mac, lid, mat };
+}
+
+function deskScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
+  const { mac, lid, mat } = buildMac(THREE, RoundedBoxGeometry);
+  void lid;
+  const root = new THREE.Group(); scene.add(root); root.add(mac);
 
   // small solar system hovering beside the laptop
   const sys = new THREE.Group(); sys.position.set(12.5, 9, 1); sys.rotation.z = 0.32; root.add(sys);
@@ -207,7 +215,135 @@ function deskScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: n
   return { update, target: new THREE.Vector3(3, 5.5, 0), camera: new THREE.Vector3(8, 10, 31) };
 }
 
-export default function Viewer({ kind, label }: { kind: Scene; label: string }) {
+function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
+  const { mac, lid, mat } = buildMac(THREE, RoundedBoxGeometry);
+  scene.add(mac);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.ShadowMaterial({ opacity: 0.3 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  // slow ring of small spheres to give the orbit something to parallax against
+  const dots = new THREE.Group(); scene.add(dots);
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * TAU, r = 34 + (i % 3) * 5;
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.35 + (i % 4) * 0.12, 16, 16), mat(["#a5654c", "#8fa3b3", "#a8b39a", "#c9bca0"][i % 4], 0.6));
+    d.position.set(Math.cos(a) * r, 2 + (i % 5) * 2.2, Math.sin(a) * r); dots.add(d);
+  }
+  const ease = (x: number) => x * x * (3 - 2 * x);
+  const seg = (p: number, a: number, b: number) => ease(Math.min(1, Math.max(0, (p - a) / (b - a))));
+  const update = (_dt: number, _still: boolean, p: number) => {
+    lid.rotation.x = -THREE.MathUtils.degToRad(104) * seg(p, 0.22, 0.5);
+    dots.rotation.y = p * 1.2;
+  };
+  const screenC = new THREE.Vector3(0, 5.5, -6.55);
+  const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
+    const f = Math.max(1, 1.2 / aspect);
+    // orbit phase: swing from behind-left, over the side, to the front
+    const orbit = seg(p, 0, 0.55);
+    const az = THREE.MathUtils.lerp(-2.4, 0, orbit);
+    const el = THREE.MathUtils.lerp(0.55, 0.32, orbit);
+    const rad = THREE.MathUtils.lerp(30, 26, orbit) * f;
+    const orbitPos = new THREE.Vector3(Math.sin(az) * Math.cos(el) * rad, Math.sin(el) * rad + 1, Math.cos(az) * Math.cos(el) * rad);
+    const orbitTarget = new THREE.Vector3(0, 2 + 3 * seg(p, 0.25, 0.5), 0);
+    // dolly phase: push in until the screen fills the frame
+    const dolly = seg(p, 0.6, 0.95);
+    const closePos = new THREE.Vector3(0, 9.9 + 1.5 * (f - 1), 9.9 + 8 * (f - 1));
+    camera.position.lerpVectors(orbitPos, closePos, dolly);
+    const tgt = new THREE.Vector3().lerpVectors(orbitTarget, screenC, dolly);
+    camera.lookAt(tgt);
+  };
+  return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(-20, 18, -20), scripted: true };
+}
+
+function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
+  const SKY = "#9aa5ad";
+  scene.background = new THREE.Color(SKY);
+  scene.fog = new THREE.Fog(SKY, 70, 300);
+  const mat = (color: string, rough = 0.55, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+  const rb = (w: number, h: number, d: number, m: THREE_NS.Material, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), m);
+
+  // --- airplane (high-wing single-engine trainer), nose toward -z
+  const plane = new THREE.Group(); scene.add(plane);
+  const body = new THREE.Group(); plane.add(body);
+  const white = mat("#e8e6e0", 0.4), stripe = mat("#a5654c", 0.5), glass = new THREE.MeshStandardMaterial({ color: "#2a3a44", roughness: 0.1, metalness: 0.2 }), grey = mat("#55595f", 0.5);
+  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 3.6, 8, 24), white); fuse.rotation.x = Math.PI / 2; fuse.scale.set(1, 1, 0.9); body.add(fuse);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.12, 3.2, 20), white); tail.rotation.x = -Math.PI / 2; tail.position.z = 3.4; tail.position.y = 0.1; body.add(tail);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 0.22, 24, 1, true), stripe); band.rotation.x = Math.PI / 2; band.position.z = 0.4; band.scale.set(1, 1, 0.9); body.add(band);
+  const cabin = rb(1.1, 0.55, 1.7, glass, 0.2); cabin.position.set(0, 0.5, -0.5); body.add(cabin);
+  const wing = rb(10, 0.14, 1.7, white, 0.06); wing.position.set(0, 0.95, -0.4); body.add(wing);
+  const wingTip = (x: number) => { const t = rb(0.5, 0.15, 1.7, stripe, 0.06); t.position.set(x, 0.95, -0.4); body.add(t); };
+  wingTip(-5.1); wingTip(5.1);
+  for (const x of [-1, 1]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), grey); st.position.set(x * 1.9, 0.0, -0.3); st.rotation.z = x * 0.9; body.add(st); }
+  const hstab = rb(3.4, 0.1, 0.8, white, 0.04); hstab.position.set(0, 0.2, 4.8); body.add(hstab);
+  const fin = rb(0.1, 1.2, 0.95, white, 0.04); fin.position.set(0, 0.8, 4.75); fin.rotation.x = -0.25; body.add(fin);
+  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.55, 0.9, 24), grey); cowl.rotation.x = Math.PI / 2; cowl.position.z = -2.25; body.add(cowl);
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), stripe); spinner.rotation.x = -Math.PI / 2; spinner.position.z = -2.95; body.add(spinner);
+  const prop = new THREE.Group(); prop.position.z = -2.75; body.add(prop);
+  const blade = rb(0.16, 2.7, 0.05, mat("#1c1d20", 0.6), 0.02); prop.add(blade);
+  const gear = new THREE.Group(); body.add(gear);
+  for (const [x, z] of [[-0.9, -0.6], [0.9, -0.6], [0, -2]] as [number, number][]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8), grey); leg.position.set(x, -0.8, z); gear.add(leg);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.14, 20), mat("#1c1d20", 0.8)); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, -1.25, z); gear.add(wheel);
+  }
+  body.traverse((o) => { (o as THREE_NS.Mesh).castShadow = false; });
+
+  // --- terrain scrolls under the plane
+  const LEN = 760, WID = 340;
+  const terrain = new THREE.Group(); scene.add(terrain);
+  const geo = new THREE.PlaneGeometry(WID, LEN, 110, 260);
+  geo.rotateX(-Math.PI / 2); geo.translate(0, 0, -LEN / 2 + 120);
+  const posAttr = geo.attributes.position as THREE_NS.BufferAttribute;
+  const colors = new Float32Array(posAttr.count * 3);
+  const col = new THREE.Color();
+  const END = -560;
+  const sm = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < posAttr.count; i++) {
+    const x = posAttr.getX(i), z = posAttr.getZ(i);
+    let h = 7 * Math.sin(x * 0.03 + 1.3) * Math.cos(z * 0.021) + 4 * Math.sin(x * 0.07 + z * 0.045) + 2 * Math.sin(z * 0.11 - x * 0.06) + 9 * Math.max(0, Math.sin(z * 0.012 + x * 0.008));
+    const flat = Math.min(sm(14, 60, Math.abs(x)) + sm(35, 120, Math.min(Math.abs(z), Math.abs(z - END))), 1);
+    h = h * flat * (0.4 + 0.6 * sm(0, 40, Math.abs(x))) + (1 - flat) * 0;
+    posAttr.setY(i, h);
+    col.set(h > 9 ? "#8c8a80" : h > 4 ? "#a1a58b" : h > 0.6 ? "#8f9d7f" : "#7f8f78");
+    col.offsetHSL(0, 0, (Math.sin(x * 0.4) * Math.cos(z * 0.4)) * 0.015);
+    colors.set([col.r, col.g, col.b], i * 3);
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
+  const land = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
+  terrain.add(land);
+  const runway = (z: number) => {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(11, 0.1, 90), mat("#3a3d42", 0.9)); r.position.set(0, 0.05, z); terrain.add(r);
+    for (let i = -4; i <= 4; i++) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 5), mat("#e8e6e0", 0.8)); d.position.set(0, 0.08, z + i * 9); terrain.add(d); }
+  };
+  runway(-5); runway(END + 5);
+  // clouds
+  const cloudM = new THREE.MeshStandardMaterial({ color: "#f1efe8", roughness: 1, transparent: true, opacity: 0.9, flatShading: true });
+  for (let i = 0; i < 16; i++) {
+    const g = new THREE.Group();
+    for (let k = 0; k < 5; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(3 + Math.random() * 3, 1), cloudM); b.position.set((k - 2) * 4 + Math.random() * 2, Math.random() * 2, Math.random() * 3); b.scale.y = 0.55; g.add(b); }
+    g.position.set((Math.random() - 0.5) * 220, 30 + Math.random() * 14, -Math.random() * 640 + 80); terrain.add(g);
+  }
+
+  const DIST = 540;
+  const alt01 = (p: number) => sm(0.14, 0.4, p) * (1 - sm(0.72, 0.94, p));
+  const update = (dt: number, _still: boolean, p: number) => {
+    const a = alt01(p), ahead = alt01(Math.min(1, p + 0.01)), climbing = ahead - a;
+    terrain.position.z = p * DIST;
+    plane.position.y = 1.7 + a * 22;
+    plane.rotation.x = THREE.MathUtils.clamp(climbing * 90, -0.35, 0.4) * -1;
+    plane.rotation.z = Math.sin(p * 14) * 0.2 * sm(0.2, 0.3, p) * (1 - sm(0.7, 0.8, p));
+    prop.rotation.z += dt * 40;
+    gear.visible = a < 0.08 || p > 0.9;
+  };
+  const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
+    const f = Math.max(1, 1.2 / aspect);
+    const y = plane.position.y;
+    const az = THREE.MathUtils.lerp(0.9, -0.5, p) + Math.sin(p * 5) * 0.12;
+    const rad = (16 + 5 * Math.sin(p * Math.PI)) * f;
+    camera.position.set(Math.sin(az) * rad, y + 3.2 + 3 * Math.sin(p * Math.PI), Math.cos(az) * rad);
+    camera.lookAt(0, y + 0.2, 0);
+  };
+  return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(14, 5, 14), scripted: true, ft: (p: number) => Math.round(alt01(p) * 3500) };
+}
+
+export default function Viewer({ kind, label, progress }: { kind: Scene; label: string; progress?: { current: number } }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -240,13 +376,19 @@ export default function Viewer({ kind, label }: { kind: Scene; label: string }) 
       key.shadow.bias = -0.0004;
       scene.add(key);
 
-      const s = kind === "printer" ? printerScene(THREE, RoundedBoxGeometry as never, ParametricGeometry as never, scene, renderer) : kind === "desk" ? deskScene(THREE, RoundedBoxGeometry as never, scene) : wingScene(THREE, scene);
+      const s: { update: (dt: number, still: boolean, p: number) => void; target: THREE_NS.Vector3; camera: THREE_NS.Vector3; frame?: Frame } =
+        kind === "printer" ? printerScene(THREE, RoundedBoxGeometry as never, ParametricGeometry as never, scene, renderer)
+        : kind === "desk" ? deskScene(THREE, RoundedBoxGeometry as never, scene)
+        : kind === "mac" ? macScene(THREE, RoundedBoxGeometry as never, scene)
+        : kind === "flight" ? flightScene(THREE, RoundedBoxGeometry as never, scene)
+        : wingScene(THREE, scene);
       const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 500);
       camera.position.copy(s.camera);
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.target.copy(s.target);
       controls.enableDamping = true; controls.enablePan = false; controls.enableZoom = false;
       controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+      if (kind === "mac" || kind === "flight") controls.enabled = false;
       controls.autoRotate = kind !== "desk"; controls.autoRotateSpeed = 0.6;
       if (kind === "desk") { controls.minAzimuthAngle = -0.7; controls.maxAzimuthAngle = 0.9; controls.minPolarAngle = 1.0; controls.maxPolarAngle = 1.55; }
 
@@ -268,9 +410,10 @@ export default function Viewer({ kind, label }: { kind: Scene; label: string }) 
         raf = requestAnimationFrame(loop);
         const dt = Math.min((now - last) / 1000, 0.05); last = now;
         if (!visible) return;
-        s.update(dt, reduce);
-        if (reduce) controls.autoRotate = false;
-        controls.update();
+        const p = progress?.current ?? 0;
+        s.update(dt, reduce, p);
+        if (s.frame) s.frame(camera, p, camera.aspect);
+        else { if (reduce) controls.autoRotate = false; controls.update(); }
         renderer.render(scene, camera);
       };
       raf = requestAnimationFrame(loop);
@@ -281,7 +424,7 @@ export default function Viewer({ kind, label }: { kind: Scene; label: string }) 
       };
     })();
     return () => { disposed = true; cleanup(); };
-  }, [kind]);
+  }, [kind, progress]);
 
   return <div className="viewer" ref={host} role="img" aria-label={label} />;
 }
