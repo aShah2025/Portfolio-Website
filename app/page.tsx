@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { pianoPlayer, PIECES } from "./pianoPlayer";
 
 const Viewer = dynamic(() => import("./Viewer"), { ssr: false });
 
@@ -18,6 +19,8 @@ type Project = {
   features: string[];
   facts: [string, string][];
 };
+
+const featured = ["kura", "canary", "culturerisk", "formula-racer", "refill"];
 
 const projects: Project[] = [
   {
@@ -37,7 +40,7 @@ const projects: Project[] = [
     facts: [["Built for", "Qloo Hackathon"], ["Stack", "JavaScript / Netlify"], ["License", "MIT"]],
   },
   {
-    id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#7cc97a", text: "#12150f",
+    id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#5fb8a5", text: "#12150f",
     short: "A better budgeting app.",
     description: "Built with Rishith Chennupati because we both struggled with budgeting and saving up for things like phones or 3D printers. Sum is built around saving toward things you actually want.",
     stat: "TWO-PERSON TEAM",
@@ -45,12 +48,20 @@ const projects: Project[] = [
     facts: [["Platform", "iOS"], ["Team", "With Rishith C."], ["Language", "Swift"]],
   },
   {
-    id: "kura", number: "04", name: "Kura", tag: "iOS / Health", color: "#e9b949", text: "#14140e",
+    id: "kura", number: "04", name: "Kura", tag: "iOS / Health", color: "#7cc97a", text: "#14140e",
     short: "Calories and macros, without the clutter.",
     description: "An iPhone calorie and macro tracker made for the Congressional App Challenge 2025. It keeps daily calories, protein, carbs, and fat quick to log and easy to understand.",
     stat: "BUILT FOR CAC 2025",
     features: ["Daily calorie total at a glance", "Protein, carbs, and fat tracked together", "Fast logging with no clutter"],
     facts: [["Platform", "iOS / SwiftUI"], ["Built for", "CAC 2025"], ["Focus", "Simplicity"]],
+  },
+  {
+    id: "canary", number: "10", name: "Canary", tag: "iOS / AI Health", color: "#f2d64b", text: "#14130a",
+    short: "Catches sleep and mood drift before you do.",
+    description: "Built with Rishith Chennupati for the Congressional App Challenge 2026. Each morning a 30-second face read lays ARKit's 3D face mesh over the front camera and tracks eyelid openness and facial movement 60 times a second. Canary combines that with resting heart rate, HRV, breathing rate and sleep from Apple Health, plus the school calendar. It compares everything against your own four-week baseline, flags drift that lasts, and models alertness through the day. It all runs on the phone, with no account and no server.",
+    stat: "BUILT FOR CAC 2026",
+    features: ["Morning face read: live ARKit face mesh, eyelid and expression tracking", "Heart rate, HRV, breathing rate and sleep from Apple Health and Apple Watch", "Drift detection against your own baseline, plus an alertness model", "Plans sleep around tests and deadlines from the school calendar", "Crisis-language check in English and Spanish caught 255 of 255 test phrases"],
+    facts: [["Built for", "CAC 2026"], ["Tech", "SwiftUI / ARKit / HealthKit"], ["Team", "With Rishith C."]],
   },
   {
     id: "refill", number: "05", name: "Refill", tag: "iOS / Education", color: "#a98cf0", text: "#ffffff",
@@ -95,15 +106,13 @@ const projects: Project[] = [
 ];
 
 const awards = [
-  { year: "2026", title: "Congressional App Challenge", note: "Competing again", kind: "IN PROGRESS", href: "#recognition" },
-  { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" },
-  { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025", kind: "AWARD", href: "#recognition" },
-  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" },
-  { year: "ONGOING", title: "Policy Debate & Congress", note: "Competitive debater in two events", kind: "ACTIVITY", href: "#awards" },
-  { year: "NOW", title: "Kung Fu Red-Black Belt", note: "Five years of training. Testing for black belt, expected April 2027", kind: "MARTIAL ARTS", href: "#awards" },
+  { year: "2026", title: "Congressional App Challenge", note: "Competing again with Canary", kind: "IN PROGRESS", href: "#canary" , code: true },
+  { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" , code: true },
+  { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" , code: true },
+  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" , code: true },
   { year: "NOW", title: "Driver's License", note: "Working toward it", kind: "IN PROGRESS", href: "#awards" },
   { year: "GOAL", title: "Private Pilot Licence", note: "The long-term goal", kind: "IN PROGRESS", href: "#goal" },
-  { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
+  { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#recognition" , code: true },
   { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
   { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE", href: "#awards" },
   { year: "7TH GRADE", title: "Geography Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
@@ -234,11 +243,22 @@ function Art({ id }: { id: string }) {
           {[0, 1, 2].map((i) => {
             const h = [260, 180, 220][i];
             const x = 120 + i * 220;
-            return <g key={i} className="bar" style={{ ["--d" as string]: `${i * 0.15}s` }}><rect x={x} y={360 - h} width="160" height={h} strokeWidth="3" /><rect className="bar-fill" x={x} y={360 - h} width="160" height={h} fill="currentColor" /></g>;
+            return <g key={i} className="bar" style={{ ["--d" as string]: `${i * 0.15}s` }}><rect x={x} y={360 - h} width="160" height={h} strokeWidth="3" /><rect className="bar-fill" x={x} y={360 - h} width="160" height={h} fill="var(--project-color)" stroke="none" /></g>;
           })}
           <path d="M60 360H760" strokeWidth="4" />
           <circle className="ring" cx="690" cy="110" r="64" strokeWidth="14" opacity=".25" />
           <circle className="ring-arc" cx="690" cy="110" r="64" strokeWidth="14" pathLength="1" />
+        </svg>
+      );
+    case "canary":
+      return (
+        <svg {...common}>
+          <rect x="40" y="170" width="720" height="90" rx="45" fill="var(--project-color)" stroke="none" opacity=".14" />
+          <path d="M40 215H760" strokeWidth="1.5" strokeDasharray="6 10" opacity=".5" />
+          <path className="draw" pathLength="1" d="M40 220 C100 190 140 240 200 212 S300 186 360 222 S460 238 520 205 S600 250 640 290 S700 330 740 320" strokeWidth="7" />
+          <circle className="flag" cx="740" cy="320" r="16" fill="var(--project-color)" strokeWidth="5" />
+          <path transform="translate(590 0)" d="M120 70a34 34 0 1 0 40 44a28 28 0 1 1 -40 -44z" fill="var(--project-color)" stroke="none" />
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => <rect key={i} x={200 + i * 64} y="80" width="40" height="40" rx="8" fill={i === 3 || i === 4 ? "var(--project-color)" : "none"} strokeWidth="2.5" opacity={i === 3 || i === 4 ? 1 : 0.5} />)}
         </svg>
       );
     case "refill":
@@ -319,6 +339,48 @@ function Art({ id }: { id: string }) {
 
 const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"], ["goal", "Goal"]];
 
+// The piano starts sounding when its section scrolls into view (once the visitor has interacted with the page,
+// which browsers require for audio) and pauses when it leaves. Pausing it by hand keeps it paused.
+function usePiano() {
+  const [, rerender] = useState(0);
+  const userPaused = useRef(false);
+  useEffect(() => {
+    const off = pianoPlayer.subscribe(() => rerender((n) => n + 1));
+    if (!pianoPlayer.notes.length) pianoPlayer.load(PIECES[0].id);
+    const el = document.getElementById("piano");
+    const io = el && new IntersectionObserver(([e]) => {
+      const active = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive;
+      if (e.isIntersecting && active && !userPaused.current && !pianoPlayer.playing) pianoPlayer.play(pianoPlayer.piece.id, pianoPlayer.offset);
+      if (!e.isIntersecting) pianoPlayer.stop();
+    }, { threshold: 0.45 });
+    if (el && io) io.observe(el);
+    return () => { off(); io?.disconnect(); pianoPlayer.stop(); };
+  }, []);
+  const toggle = () => {
+    if (pianoPlayer.playing) { userPaused.current = true; pianoPlayer.stop(); }
+    else { userPaused.current = false; pianoPlayer.play(pianoPlayer.piece.id, pianoPlayer.offset); }
+  };
+  const choose = (id: string) => { userPaused.current = false; pianoPlayer.play(id, 0); };
+  return { player: pianoPlayer, toggle, choose };
+}
+
+function PianoProgress() {
+  const bar = useRef<HTMLSpanElement>(null), label = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+    const loop = () => {
+      const t = pianoPlayer.position() ?? pianoPlayer.offset, d = pianoPlayer.duration || 1;
+      if (bar.current) bar.current.style.transform = `scaleX(${Math.min(1, t / d)})`;
+      if (label.current) label.current.textContent = `${fmt(t)} / ${fmt(pianoPlayer.duration)}`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <div className="pp-progress"><i><span ref={bar} /></i><span ref={label}>0:00</span></div>;
+}
+
 function useActiveSection() {
   const [active, setActive] = useState("");
   useEffect(() => {
@@ -343,6 +405,7 @@ export default function Home() {
   const flightRef = useRef<HTMLElement>(null);
   useReveal();
   const active = useActiveSection();
+  const { player, toggle, choose } = usePiano();
   useScrollProgress(progress);
   const macP = usePin(macRef);
   usePin(stRef, statementWords);
@@ -396,10 +459,10 @@ export default function Home() {
 
       <section className="about" id="about">
         <div className="about-kicker">01 / ABOUT</div>
-        <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
+        <div className="about-title" data-reveal><span>Leland</span><span>High,</span><span>San Jose.</span></div>
         <div className="about-copy" data-reveal>
-          <p>I&apos;m a student at Leland High School in San Jose, and I went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
-          <p>Outside of school I debate policy and Congress, train kung fu, and play piano. I&apos;m also in the Leland Hackathon Club and Leland Motorsport Club. I would rather show what I&apos;m learning than pretend I already know everything.</p>
+          <p>I&apos;m in high school at Leland, and went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
+          <p>Outside of school I debate policy and Congress, train kung fu, and play piano. I&apos;m also in the Leland Hackathon Club and Leland Motorsport Club.</p>
         </div>
       </section>
 
@@ -407,16 +470,16 @@ export default function Home() {
         <header className="section-head" data-reveal>
           <span>02 / SELECTED WORK</span>
           <h2>Things I&apos;ve<br />built so far.</h2>
-          <p>Nine projects across iOS, AI agents, web, and games. Open any one for what it does and how it works.</p>
+          <p>The five I&apos;m proudest of, across iOS, AI agents, and games. Open any one for what it does and how it works.</p>
         </header>
 
         <div className="project-list">
-          {projects.map((project) => {
+          {featured.map((id) => projects.find((p) => p.id === id)!).map((project, i) => {
             const isOpen = openProject === project.id;
             return (
               <article className={`project ${isOpen ? "open" : ""}`} id={project.id} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
                 <button className="project-trigger" type="button" aria-expanded={isOpen} aria-controls={`${project.id}-details`} onClick={() => setOpenProject(isOpen ? null : project.id)}>
-                  <span className="project-number">{project.number}</span>
+                  <span className="project-number">{String(i + 1).padStart(2, "0")}</span>
                   <span className="project-title">{project.name}</span>
                   <span className="project-tag">{project.tag}</span>
                   <span className="project-toggle" aria-hidden="true">{isOpen ? "−" : "+"}</span>
@@ -438,13 +501,24 @@ export default function Home() {
             );
           })}
         </div>
+        <div className="also-built" data-reveal>
+          <span>Also built</span>
+          <ul>{projects.filter((p) => !featured.includes(p.id)).map((p) => <li key={p.id}><b style={{ color: p.color }}>{p.name}</b> {p.short}</li>)}</ul>
+        </div>
       </section>
 
       <section className="recognition" id="recognition">
-        <div className="recognition-label">03 / RECOGNITION</div>
+        <div className="recognition-label">03 / RECOGNITION &amp; HACKATHONS</div>
         <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
         <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
-        <div className="recognition-footer"><span>Congressional App Challenge 2025 recognition. Competing again in 2026.</span><span>2025 / 2026</span></div>
+        <div className="recognition-footer"><span>Recognized in the Congressional App Challenge 2025 for Kura. Competing again in 2026 with Canary.</span><span>2025 / 2026</span></div>
+        <ul className="award-list code-awards">
+          {awards.filter((a) => a.code).map((a, i) => (
+            <li className="award" key={a.title} data-reveal style={{ "--i": i } as React.CSSProperties}>
+              <a href={a.href}><span className="award-year">{a.year}</span><span className="award-title">{a.title}</span><span className="award-note">{a.note}</span><span className="award-kind">{a.kind}</span></a>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="debate" id="debate">
@@ -491,7 +565,18 @@ export default function Home() {
           </div>
         </div>
         <figure className="render piano-render" data-reveal>
-          <Viewer kind="piano" label="Dot-outline 3D render of a grand piano playing a slow arpeggio. Drag to rotate." />
+          <Viewer kind="piano" label="Dot-outline 3D render of a grand piano playing the opening of the Moonlight Sonata's third movement. Drag to rotate." />
+          <figcaption className="piano-play">
+            <div className="pp-now">
+              <button type="button" className="pp-toggle" aria-pressed={player.playing} aria-label={player.playing ? "Pause" : "Play with sound"} onClick={toggle}>{player.playing ? "❚❚" : "▶"}</button>
+              <div><b>{player.piece.composer}</b><span>{player.piece.title}</span></div>
+            </div>
+            <PianoProgress />
+            <ol className="pp-list">
+              {PIECES.map((p) => <li key={p.id}><button type="button" className={p.id === player.piece.id ? "on" : ""} onClick={() => choose(p.id)}><b>{p.composer}</b> {p.title}</button></li>)}
+            </ol>
+            <small>{player.piece.credit}. Piano samples: Salamander Grand Piano, CC BY 3.0.</small>
+          </figcaption>
         </figure>
       </section>
 
@@ -501,7 +586,7 @@ export default function Home() {
           <h2>Beyond<br />the code.</h2>
         </header>
         <ul className="award-list">
-          {awards.map((a, i) => (
+          {awards.filter((a) => !a.code).map((a, i) => (
             <li className="award" key={a.title} data-reveal style={{ "--i": i } as React.CSSProperties}>
               <a href={a.href}>
                 <span className="award-year">{a.year}</span>
