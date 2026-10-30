@@ -21,7 +21,7 @@ type Project = {
 
 const projects: Project[] = [
   {
-    id: "wayfinder", number: "01", name: "Wayfinder", tag: "AI / Navigation", color: "#c98a6e", text: "#16120f",
+    id: "wayfinder", number: "01", name: "Wayfinder", tag: "AI / Navigation", color: "#e07a5f", text: "#16120f",
     short: "Bike routes that actually listen.",
     description: "Type how you want to ride, like avoiding hills or a busy road, and Wayfinder builds real bike routes, measures every street on them, and picks the one that fits. The AI only turns your words into settings. The routing, scoring, and explanation are my own code on Valhalla and OpenStreetMap.",
     stat: "IMPACTHACK 2026",
@@ -29,7 +29,7 @@ const projects: Project[] = [
     facts: [["Built for", "ImpactHack 2026"], ["Stack", "Python / Gemini / Valhalla"], ["Area", "California"]],
   },
   {
-    id: "culturerisk", number: "02", name: "CultureRisk", tag: "AI / Hackathon", color: "#9aa7ad", text: "#101417",
+    id: "culturerisk", number: "02", name: "CultureRisk", tag: "AI / Hackathon", color: "#7aa2f7", text: "#101417",
     short: "Know the audience before you greenlight.",
     description: "An autonomous research agent for film-studio executives, built on Qloo's taste graph. Give it a project and its comparable titles. It plans an investigation across four Qloo endpoints, changes course as evidence comes in, and writes a greenlight memo where every number traces back to a logged Qloo call.",
     stat: "QLOO HACKATHON",
@@ -37,7 +37,7 @@ const projects: Project[] = [
     facts: [["Built for", "Qloo Hackathon"], ["Stack", "JavaScript / Netlify"], ["License", "MIT"]],
   },
   {
-    id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#a8b39a", text: "#12150f",
+    id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#7cc97a", text: "#12150f",
     short: "A better budgeting app.",
     description: "Built with Rishith Chennupati because we both struggled with budgeting and saving up for things like phones or 3D printers. Sum is built around saving toward things you actually want.",
     stat: "TWO-PERSON TEAM",
@@ -45,7 +45,7 @@ const projects: Project[] = [
     facts: [["Platform", "iOS"], ["Team", "With Rishith C."], ["Language", "Swift"]],
   },
   {
-    id: "kura", number: "04", name: "Kura", tag: "iOS / Health", color: "#b9b79a", text: "#14140e",
+    id: "kura", number: "04", name: "Kura", tag: "iOS / Health", color: "#e9b949", text: "#14140e",
     short: "Calories and macros, without the clutter.",
     description: "An iPhone calorie and macro tracker made for the Congressional App Challenge 2025. It keeps daily calories, protein, carbs, and fat quick to log and easy to understand.",
     stat: "BUILT FOR CAC 2025",
@@ -53,7 +53,7 @@ const projects: Project[] = [
     facts: [["Platform", "iOS / SwiftUI"], ["Built for", "CAC 2025"], ["Focus", "Simplicity"]],
   },
   {
-    id: "refill", number: "05", name: "Refill", tag: "iOS / Education", color: "#8f8ba3", text: "#ffffff",
+    id: "refill", number: "05", name: "Refill", tag: "iOS / Education", color: "#a98cf0", text: "#ffffff",
     short: "No teacher should pay out of their own pocket.",
     description: "A SwiftUI app for drafting classroom supply requests and helping supporters discover projects. It reads live California DonorsChoose listings through a Cloudflare Worker, parses plain-English requests with AI, and labels clearly when it is showing sample data instead of live data.",
     stat: "CLASSROOM SUPPLIES",
@@ -61,7 +61,7 @@ const projects: Project[] = [
     facts: [["Platform", "iOS 17+"], ["Backend", "Cloudflare Worker"], ["Data", "DonorsChoose"]],
   },
   {
-    id: "coursefit", number: "06", name: "CourseFit", tag: "Web / Scheduling", color: "#b3a58f", text: "#16130e",
+    id: "coursefit", number: "06", name: "CourseFit", tag: "Web / Scheduling", color: "#55c2d3", text: "#16130e",
     short: "Master schedules without the chaos.",
     description: "An automated master scheduling engine for schools. It captures student course selections and generates conflict-free schedules based on teacher availability and classroom capacity.",
     stat: "SCHOOL SCHEDULING",
@@ -69,7 +69,7 @@ const projects: Project[] = [
     facts: [["Problem", "Manual scheduling"], ["Inputs", "Courses / teachers / rooms"], ["Output", "Conflict-free schedule"]],
   },
   {
-    id: "turbo-lane", number: "07", name: "Turbo Lane", tag: "Game / Arcade", color: "#c4b27a", text: "#14110a",
+    id: "turbo-lane", number: "07", name: "Turbo Lane", tag: "Game / Arcade", color: "#f0913a", text: "#14110a",
     short: "A vertical racer built for one more run.",
     description: "A fast vertical arcade game about dodging traffic, chasing a higher score, crashing, and immediately trying again.",
     stat: "PLAYABLE",
@@ -77,7 +77,7 @@ const projects: Project[] = [
     facts: [["Genre", "Arcade"], ["Status", "Playable"], ["Loop", "One more run"]],
   },
   {
-    id: "formula-racer", number: "08", name: "Formula Racer", tag: "Game / 3D Racing", color: "#7d93a8", text: "#ffffff",
+    id: "formula-racer", number: "08", name: "Formula Racer", tag: "Game / 3D Racing", color: "#e5534b", text: "#ffffff",
     short: "A 3D racing game in progress.",
     description: "A 3D racing game loosely inspired by the speed, cameras, and race-weekend energy of Formula 1 games. Still building it. Still improving the lap time.",
     stat: "IN DEVELOPMENT",
@@ -85,7 +85,7 @@ const projects: Project[] = [
     facts: [["Genre", "3D racing"], ["Status", "In development"], ["Inspired by", "F1 games"]],
   },
   {
-    id: "winglab", number: "09", name: "WingLab", tag: "macOS / Physics", color: "#c3ccd0", text: "#101417",
+    id: "winglab", number: "09", name: "WingLab", tag: "macOS / Physics", color: "#9fb6cc", text: "#101417",
     short: "An aerodynamics playground for Mac.",
     description: "Change a wing, adjust airflow and angle of attack, then compare lift, drag, and efficiency without needing an actual wind tunnel.",
     stat: "AERODYNAMICS SIM",
@@ -297,9 +297,10 @@ function Art({ id }: { id: string }) {
     case "sum":
       return (
         <svg {...common}>
-          <path d="M60 340H760" strokeWidth="4" />
-          <path className="draw" pathLength="1" d="M70 300 C170 290 220 250 300 255 S430 190 520 170 S660 90 740 70" strokeWidth="9" />
-          {[0, 1, 2, 3, 4].map((i) => <rect key={i} className="coin" x={110 + i * 130} y={330 - i * 38} width="70" height={i * 38 + 10} fill="var(--project-color)" strokeWidth="3" style={{ ["--d" as string]: `${i * 0.12}s` }} />)}
+          <path d="M60 340H760" strokeWidth="3" opacity=".4" />
+          {[0, 1, 2, 3, 4].map((i) => <rect key={i} className="coin" x={110 + i * 130} y={330 - i * 38} width="70" height={i * 38 + 10} rx="6" fill="var(--project-color)" stroke="none" style={{ ["--d" as string]: `${i * 0.12}s` }} />)}
+          <path className="draw" pathLength="1" d="M145 312 C210 302 230 282 275 274 S360 244 405 236 S490 207 535 198 S620 168 665 160" strokeWidth="5" />
+          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={145 + i * 130} cy={312 - i * 38} r="9" fill="var(--paper)" strokeWidth="4" />)}
         </svg>
       );
     case "coursefit":
@@ -316,6 +317,23 @@ function Art({ id }: { id: string }) {
   }
 }
 
+const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"], ["goal", "Goal"]];
+
+function useActiveSection() {
+  const [active, setActive] = useState("");
+  useEffect(() => {
+    const on = () => {
+      let cur = "";
+      for (const [id] of sections) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < window.innerHeight * 0.4) cur = id; }
+      setActive(cur);
+    };
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return active;
+}
+
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>("wayfinder");
   const progress = useRef<HTMLDivElement>(null);
@@ -324,6 +342,7 @@ export default function Home() {
   const stRef = useRef<HTMLElement>(null);
   const flightRef = useRef<HTMLElement>(null);
   useReveal();
+  const active = useActiveSection();
   useScrollProgress(progress);
   const macP = usePin(macRef);
   usePin(stRef, statementWords);
@@ -341,13 +360,7 @@ export default function Home() {
       <nav className="topbar" aria-label="Main navigation" ref={nav}>
         <a className="nav-name" href="#top">AS</a>
         <div className="nav-links">
-          <a href="#work">Work</a>
-          <a href="#about">About</a>
-          <a href="#debate">Debate</a>
-          <a href="#kungfu">Kung Fu</a>
-          <a href="#recognition">Recognition</a>
-          <a href="#awards">Awards</a>
-          <a href="#goal">Goal</a>
+          {sections.map(([id, name]) => <a key={id} href={`#${id}`} className={active === id ? "on" : ""}>{name}</a>)}
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
         </div>
       </nav>
@@ -362,7 +375,6 @@ export default function Home() {
         <div className="hero-scene"><Viewer kind="desk" label="Interactive 3D render of a MacBook with a small solar system floating beside it" /></div>
       </section>
 
-      <div className="ticker" aria-hidden="true"><div>IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i> IOS APPS <i>✦</i> POLICY DEBATE <i>✦</i> KUNG FU <i>✦</i> 3D PRINTING <i>✦</i> RACING GAMES <i>✦</i> CONGRESSIONAL APP CHALLENGE <i>✦</i> WEB DESIGN <i>✦</i> QLOO HACKATHON <i>✦</i></div></div>
 
       <section className="pin pin-mac" ref={macRef} aria-label="Scroll story: a laptop opening">
         <div className="pin-sticky">
@@ -378,13 +390,22 @@ export default function Home() {
 
       <section className="statement" ref={stRef}>
         <div className="pin-sticky">
-          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. And I'm working toward my driver's licence, then my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
+          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. I play piano. And I'm working toward my driver's licence, then my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
+        </div>
+      </section>
+
+      <section className="about" id="about">
+        <div className="about-kicker">01 / ABOUT</div>
+        <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
+        <div className="about-copy" data-reveal>
+          <p>I&apos;m a student at Leland High School in San Jose, and I went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
+          <p>Outside of school I debate policy and Congress, train kung fu, and play piano. I&apos;m also in the Leland Hackathon Club and Leland Motorsport Club. I would rather show what I&apos;m learning than pretend I already know everything.</p>
         </div>
       </section>
 
       <section className="work" id="work">
         <header className="section-head" data-reveal>
-          <span>01 / SELECTED WORK</span>
+          <span>02 / SELECTED WORK</span>
           <h2>Things I&apos;ve<br />built so far.</h2>
           <p>Nine projects across iOS, AI agents, web, and games. Open any one for what it does and how it works.</p>
         </header>
@@ -393,7 +414,7 @@ export default function Home() {
           {projects.map((project) => {
             const isOpen = openProject === project.id;
             return (
-              <article className={`project ${isOpen ? "open" : ""}`} id={project.id} key={project.id} data-reveal style={{ "--project-color": project.color, "--project-text": project.text } as React.CSSProperties}>
+              <article className={`project ${isOpen ? "open" : ""}`} id={project.id} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
                 <button className="project-trigger" type="button" aria-expanded={isOpen} aria-controls={`${project.id}-details`} onClick={() => setOpenProject(isOpen ? null : project.id)}>
                   <span className="project-number">{project.number}</span>
                   <span className="project-title">{project.name}</span>
@@ -419,31 +440,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="lab" id="lab">
-        <header className="lab-head" data-reveal><span>02 / RENDERS</span><h2>On the<br />bench.</h2></header>
-        <div className="lab-grid">
-          <figure className="render wide" data-reveal>
-            <Viewer kind="printer" label="Interactive 3D render of an open-frame 3D printer printing a vase" />
-            <figcaption><b>Open-frame printer, mid-print</b><span>Modeled in three.js. The nozzle follows the real tool path: the bed slides, the head sweeps, and the gantry climbs as the vase grows. Drag to orbit.</span></figcaption>
-          </figure>
-          <figure className="render" data-reveal>
-            <Viewer kind="wing" label="Interactive 3D render of a wing in airflow" />
-            <figcaption><b>Wing in airflow</b><span>The idea behind WingLab: a cambered airfoil with endplates and particles bending around it.</span></figcaption>
-          </figure>
-          <div className="render note" data-reveal>
-            <p>Why a printer?</p>
-            <span>I&apos;m newer to hardware and CAD. Rendering the machines I&apos;m learning to use is how I figure out how they actually work.</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="about" id="about">
-        <div className="about-kicker">03 / ABOUT</div>
-        <div className="about-title" data-reveal><span>I&apos;m</span><span>still</span><span>learning.</span></div>
-        <div className="about-copy" data-reveal>
-          <p>I&apos;m a student at Leland High School in San Jose, and I went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
-          <p>Outside of code I debate policy and congress, train kung fu (five years in, red-black belt now, black belt test expected April 2027), and I&apos;m exploring the Leland Hackathon Club and Leland Motorsport Club, which is where I learn to take a messy problem and argue for a clear solution. I would rather show what I&apos;m learning than pretend I already know everything.</p>
-        </div>
+      <section className="recognition" id="recognition">
+        <div className="recognition-label">03 / RECOGNITION</div>
+        <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
+        <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
+        <div className="recognition-footer"><span>Congressional App Challenge 2025 recognition. Competing again in 2026.</span><span>2025 / 2026</span></div>
       </section>
 
       <section className="debate" id="debate">
@@ -481,11 +482,17 @@ export default function Home() {
         <p className="kf-copy" data-reveal>Five years of showing up, repeating the basics, and testing for the next belt. The black belt test is the next milestone.</p>
       </section>
 
-      <section className="recognition" id="recognition">
-        <div className="recognition-label">06 / RECOGNITION</div>
-        <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
-        <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
-        <div className="recognition-footer"><span>Congressional App Challenge 2025 recognition. Competing again in 2026.</span><span>2025 / 2026</span></div>
+      <section className="piano" id="piano">
+        <div className="piano-copy">
+          <header className="kf-head piano-head" data-reveal><span>06 / PIANO</span><h2><CountUp to={6} /> years<br />at the keys.</h2></header>
+          <div className="kf-stats piano-stats">
+            <div data-reveal><b>Classical</b><span>Focus</span></div>
+            <div data-reveal><b>RCM Level 9</b><span>Royal Conservatory</span></div>
+          </div>
+        </div>
+        <figure className="render piano-render" data-reveal>
+          <Viewer kind="piano" label="Dot-outline 3D render of a grand piano playing a slow arpeggio. Drag to rotate." />
+        </figure>
       </section>
 
       <section className="awards" id="awards">

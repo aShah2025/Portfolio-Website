@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type * as THREE_NS from "three";
 
-type Scene = "printer" | "wing" | "desk" | "mac" | "flight";
+type Scene = "printer" | "wing" | "desk" | "mac" | "flight" | "piano";
 type Frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => void;
 type T = typeof THREE_NS;
 
@@ -149,6 +149,124 @@ function wingScene(THREE: T, scene: THREE_NS.Scene) {
   return { update, target: new THREE.Vector3(0, 0, 0), camera: new THREE.Vector3(44, 20, 62) };
 }
 
+function pianoScene(THREE: T, scene: THREE_NS.Scene) {
+  const root = new THREE.Group(); scene.add(root);
+  const dot = document.createElement("canvas"); dot.width = dot.height = 32;
+  const dc = dot.getContext("2d")!; dc.fillStyle = "#fff"; dc.beginPath(); dc.arc(16, 16, 14, 0, Math.PI * 2); dc.fill();
+  const sprite = new THREE.CanvasTexture(dot);
+  const mat = (size: number) => new THREE.PointsMaterial({ size, map: sprite, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true });
+
+  // grand piano plan view: x across the keyboard, d = depth back from the keys (scene z = -d)
+  const plan = new THREE.Shape();
+  plan.moveTo(-7.5, 0); plan.lineTo(7.5, 0); plan.lineTo(7.5, 5);
+  plan.bezierCurveTo(7.5, 10, 1.5, 10, 1, 15);
+  plan.bezierCurveTo(0.6, 19, -1, 21, -4, 21);
+  plan.bezierCurveTo(-6.5, 21, -7.5, 19.5, -7.5, 17);
+  plan.lineTo(-7.5, 0);
+  const outline = plan.getSpacedPoints(520);
+  const inside = (x: number, d: number) => {
+    let c = false;
+    for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+      const a = outline[i], b = outline[j];
+      if ((a.y > d) !== (b.y > d) && x < ((b.x - a.x) * (d - a.y)) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  };
+
+  const pos: number[] = [], col: number[] = [];
+  const add = (x: number, y: number, z: number, b = 0.9) => { pos.push(x, y, z); col.push(b, b, b * 0.98); };
+  const line = (a: number[], b: number[], step: number, br?: number) => {
+    const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / step));
+    for (let i = 0; i <= n; i++) { const t = i / n; add(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, br); }
+  };
+  const RIM_LO = 6, RIM_HI = 8.6;
+  // rim
+  for (const p of outline) for (let y = RIM_LO; y <= RIM_HI + 0.01; y += 0.2) add(p.x, y, -p.y, y === RIM_LO || y > RIM_HI - 0.15 ? 1 : 0.62);
+  // strings, fanning back from the keys
+  for (let x = -7.1; x <= 7.1; x += 0.28) for (let d = 1.2; d < 21; d += 0.14) { if (!inside(x - d * 0.06, d)) break; add(x - d * 0.06, 7.4, -d, 0.42); }
+  // lid, propped open on the treble side and hinged on the straight bass side
+  const lid = new THREE.Group(); lid.position.set(-7.5, RIM_HI + 0.15, 0); lid.rotation.z = THREE.MathUtils.degToRad(34);
+  const lp: number[] = [], lc: number[] = [];
+  for (const p of outline) { lp.push(p.x + 7.5, 0, -p.y); lc.push(1, 1, 1); }
+  for (let i = 0; i < 2600; i++) { const x = -7.5 + Math.random() * 15, d = Math.random() * 21; if (inside(x, d)) { lp.push(x + 7.5, 0, -d); lc.push(0.35, 0.35, 0.36); } }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(lp, 3)); lg.setAttribute("color", new THREE.Float32BufferAttribute(lc, 3));
+  lid.add(new THREE.Points(lg, mat(0.16))); root.add(lid);
+  const tip = new THREE.Vector3(6.6 + 7.5, 0, -7).applyEuler(lid.rotation).add(lid.position);
+  line([6.6, RIM_HI, -7], [tip.x, tip.y, tip.z], 0.16, 0.7);
+  // legs, pedal lyre and music desk
+  for (const [x, d] of [[-6.4, 1.6], [6.4, 1.6], [-3.4, 18.6]]) for (let a = 0; a < Math.PI * 2; a += Math.PI / 7) line([x + Math.cos(a) * 0.45, 0, -d + Math.sin(a) * 0.45], [x + Math.cos(a) * 0.55, RIM_LO, -d + Math.sin(a) * 0.55], 0.2, 0.7);
+  for (const x of [-0.5, 0.5]) line([x, 0.4, -2.2], [x, RIM_LO, -2.2], 0.16, 0.7);
+  for (const x of [-0.6, 0, 0.6]) line([x, 0.5, -2.2], [x, 0.5, -1.2], 0.1, 1);
+  const desk = (u: number, v: number) => [u * 4.2, RIM_HI + 0.4 + v * 3.4, -1.6 - v * 1.1];
+  for (let u = -1; u <= 1.001; u += 0.025) { line(desk(u, 0), desk(u, 0.02), 1, 0.85); line(desk(u, 1), desk(u, 0.98), 1, 0.85); }
+  for (let v = 0; v <= 1.001; v += 0.04) { add(...(desk(-1, v) as [number, number, number]), 0.85); add(...(desk(1, v) as [number, number, number]), 0.85); }
+  // keybed and cheek blocks
+  for (let x = -7.5; x <= 7.5; x += 0.14) { add(x, 6.2, 3.3, 0.7); add(x, 6.75, 3.3, 0.7); }
+  for (const x of [-7.4, 7.4]) for (let z = 0; z <= 3.3; z += 0.16) for (let y = 6.2; y <= 7.6; y += 0.2) add(x, y, z, 0.6);
+  // floor ring
+  for (let a = 0; a < Math.PI * 2; a += 0.012) add(Math.cos(a) * 18, 0, -9 + Math.sin(a) * 18, 0.25);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  root.add(new THREE.Points(g, mat(0.14)));
+
+  // 88 keys, each a patch of dots that can be pressed
+  const isBlack = (k: number) => [1, 4, 6, 9, 11].includes(k % 12);
+  const ww = 14.6 / 52, keyX: number[] = [];
+  let wi = 0;
+  for (let k = 0; k < 88; k++) { if (isBlack(k)) keyX.push(-7.3 + wi * ww); else { keyX.push(-7.3 + (wi + 0.5) * ww); wi++; } }
+  const kp: number[] = [], kc: number[] = [], owner: number[] = [], base: number[] = [];
+  for (let k = 0; k < 88; k++) {
+    const black = isBlack(k), w = black ? ww * 0.55 : ww * 0.84, len = black ? 1.9 : 3, y = black ? 7.25 : 6.9;
+    for (let x = -w / 2; x <= w / 2 + 1e-6; x += w / (black ? 2 : 3)) for (let z = 0; z <= len; z += 0.12) {
+      kp.push(keyX[k] + x, y, z); base.push(black ? 0.34 : 0.95); owner.push(k);
+    }
+  }
+  for (const b of base) kc.push(b, b, b);
+  const kg = new THREE.BufferGeometry(); kg.setAttribute("position", new THREE.Float32BufferAttribute(kp, 3)); kg.setAttribute("color", new THREE.Float32BufferAttribute(kc, 3));
+  root.add(new THREE.Points(kg, mat(0.12)));
+  const restY = kp.filter((_, i) => i % 3 === 1);
+
+  // notes drift up off the strings as keys are played
+  const NN = 320, np = new Float32Array(NN * 3), nc = new Float32Array(NN * 3), life = new Float32Array(NN);
+  const ng = new THREE.BufferGeometry(); ng.setAttribute("position", new THREE.BufferAttribute(np, 3)); ng.setAttribute("color", new THREE.BufferAttribute(nc, 3));
+  root.add(new THREE.Points(ng, mat(0.42)));
+  let nextNote = 0;
+
+  // a slow C-sharp minor arpeggio, up and back down
+  const up = [16, 23, 28, 31, 35, 40, 43, 47, 52, 55, 59, 64];
+  const seq = [...up, ...up.slice(1, -1).reverse()];
+  const accent = new THREE.Color("#7df2c4");
+  const press = new Float32Array(88);
+  let time = 0, step = -1;
+  const update = (dt: number, still: boolean) => {
+    if (!still) time += dt;
+    const s = Math.floor(time / 0.24);
+    if (s !== step && !still) {
+      step = s; const k = seq[s % seq.length]; press[k] = 1;
+      for (let j = 0; j < 4; j++) {
+        const i = nextNote++ % NN; life[i] = 1 - j * 0.15;
+        np[i * 3] = keyX[k] - 1 + (Math.random() - 0.5) * 0.8; np[i * 3 + 1] = 8 + j * 0.5; np[i * 3 + 2] = -5 - Math.random() * 8;
+      }
+    }
+    const pa = kg.attributes.position.array as Float32Array, ca = kg.attributes.color.array as Float32Array;
+    for (let k = 0; k < 88; k++) press[k] = Math.max(0, press[k] - dt * 0.9);
+    for (let i = 0; i < owner.length; i++) {
+      const p = press[owner[i]], b = base[i];
+      pa[i * 3 + 1] = restY[i] - p * 0.22;
+      ca[i * 3] = b + (accent.r - b) * p; ca[i * 3 + 1] = b + (accent.g - b) * p; ca[i * 3 + 2] = b + (accent.b - b) * p;
+    }
+    kg.attributes.position.needsUpdate = true; kg.attributes.color.needsUpdate = true;
+    for (let i = 0; i < NN; i++) {
+      if (life[i] <= 0) { nc[i * 3] = nc[i * 3 + 1] = nc[i * 3 + 2] = 0; continue; }
+      life[i] -= dt * 0.35; np[i * 3 + 1] += dt * 2.4; np[i * 3] += Math.sin(time * 2 + i) * dt * 0.4;
+      const l = Math.max(0, life[i]);
+      nc[i * 3] = accent.r * l; nc[i * 3 + 1] = accent.g * l; nc[i * 3 + 2] = accent.b * l;
+    }
+    ng.attributes.position.needsUpdate = true; ng.attributes.color.needsUpdate = true;
+  };
+  update(0, false);
+  return { update, target: new THREE.Vector3(0, 7, -7.5), camera: new THREE.Vector3(26, 20, 23) };
+}
+
 function buildMac(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry) {
   const mat = (color: string, rough = 0.5, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
   const silver = mat("#b4b7bb", 0.32, 1), dark = mat("#1b1c1f", 0.6), key = mat("#25272b", 0.55), pad = mat("#a3a6aa", 0.35, 1);
@@ -174,7 +292,7 @@ function buildMac(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
   ["#a5654c", "#c9bca0", "#a8b39a"].forEach((col, i) => { g.fillStyle = col; g.beginPath(); g.arc(40 + i * 30, 28, 8, 0, TAU); g.fill(); });
   g.fillStyle = "#ece8df"; g.font = "700 130px Helvetica, Arial, sans-serif"; g.fillText("Aaditya", 80, 300); g.fillText("Shah.", 80, 430);
   g.fillStyle = "rgba(236,232,223,.6)"; g.font = "500 30px Helvetica, Arial, sans-serif"; g.fillText("Apps, games, and whatever I want to learn next.", 84, 500);
-  const cards: [string, string][] = [["#c98a6e", "Wayfinder"], ["#9aa7ad", "CultureRisk"], ["#a8b39a", "Sum"]];
+  const cards: [string, string][] = [["#e07a5f", "Wayfinder"], ["#7aa2f7", "CultureRisk"], ["#7cc97a", "Sum"]];
   cards.forEach(([col, label], i) => { g.fillStyle = col; g.fillRect(84 + i * 360, 580, 330, 110); g.fillStyle = "#16120f"; g.font = "700 34px Helvetica, Arial, sans-serif"; g.fillText(label, 108 + i * 360, 646); });
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(14.1, 8.8), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.rotation.x = Math.PI / 2; screen.position.set(0, -0.05, 5.2); lid.add(screen);
@@ -383,6 +501,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
         : kind === "desk" ? deskScene(THREE, RoundedBoxGeometry as never, scene)
         : kind === "mac" ? macScene(THREE, RoundedBoxGeometry as never, scene)
         : kind === "flight" ? flightScene(THREE, RoundedBoxGeometry as never, scene)
+        : kind === "piano" ? pianoScene(THREE, scene)
         : wingScene(THREE, scene);
       const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 500);
       camera.position.copy(s.camera);
@@ -398,7 +517,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const resize = () => {
         const w = el.clientWidth, h = el.clientHeight;
-        renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+        if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
         const f = Math.max(1, 1.15 / camera.aspect);
         camera.position.copy(s.target).addScaledVector(offset, f);
       };
