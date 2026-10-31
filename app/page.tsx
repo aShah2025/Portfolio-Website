@@ -397,7 +397,7 @@ function useActiveSection() {
 }
 
 export default function Home() {
-  const [openProject, setOpenProject] = useState<string | null>("wayfinder");
+  const [openProject, setOpenProject] = useState<string | null>(featured[0]);
   const progress = useRef<HTMLDivElement>(null);
   const nav = useRef<HTMLElement>(null);
   const macRef = useRef<HTMLElement>(null);

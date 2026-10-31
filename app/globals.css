@@ -312,3 +312,27 @@ button:focus-visible, a:focus-visible { outline: 4px solid var(--lime); outline-
 .pp-list button:hover, .pp-list button.on { opacity: 1; } .pp-list button.on b { color: var(--lime); }
 .pp-list b { font-weight: 600; margin-right: 6px; }
 .piano-play small { font-size: .72rem; opacity: .45; }
+
+/* readability pass: looser display leading, calmer body tracking, collision fixes */
+.hero h1 { line-height: .82; }
+.about-title { line-height: .84; }
+.section-head h2, .awards-head h2, .debate-head h2, .kf-head h2 { line-height: .88; letter-spacing: -.065em; }
+.recognition p { line-height: .9; }
+.footer h2 { line-height: .88; letter-spacing: -.07em; }
+.project-title { line-height: .95; letter-spacing: -.06em; }
+.award-title { line-height: 1.05; letter-spacing: -.045em; }
+.about-copy p, .project-copy p, .debate-grid p, .section-head p, .hero-bottom p { letter-spacing: -.015em; line-height: 1.4; }
+.project-copy > p { line-height: 1.12; letter-spacing: -.035em; }
+.debate-line, .kf-copy { letter-spacing: -.03em; line-height: 1.2; }
+.recognition p:nth-of-type(2) { align-self: flex-start; margin-left: 6%; }
+.recognition-footer { gap: 30px; } .recognition-footer > span:last-child { white-space: nowrap; } .recognition-footer > span:first-child { max-width: 60ch; line-height: 1.5; }
+@media (max-width: 850px) {
+  .topbar, .topbar.scrolled { background: rgba(7,8,9,.82); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
+  .seal { display: none; }
+  .recognition p { font-size: 10vw; } .recognition p:nth-of-type(2) { margin-left: 0; }
+}
+@media (max-width: 560px) {
+  .project-trigger { row-gap: 10px; }
+  .project-tag { grid-column: 2; grid-row: 2; justify-self: start; text-align: left; font-size: .68rem; opacity: .7; }
+  .project-toggle { grid-column: 3; grid-row: 1; }
+}
