@@ -574,9 +574,8 @@ function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
 }
 
 function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
-  const SKY = "#14181d";
-  scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(SKY, 140, 520);
+  // no sky: the page shows through, and distant ground fades toward paper so it thins into light glyphs
+  scene.fog = new THREE.Fog("#eef1f5", 140, 520);
   const mat = (color: string, rough = 0.55, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
   const rb = (w: number, h: number, d: number, m: THREE_NS.Material, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), m);
 
