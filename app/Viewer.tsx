@@ -706,9 +706,9 @@ function flightScene(THREE: T, scene: THREE_NS.Scene) {
     const f = Math.max(1, 1.2 / aspect);
     const y = plane.position.y;
     const az = THREE.MathUtils.lerp(0.9, -0.5, p) + Math.sin(p * 5) * 0.12;
-    const rad = (16 + 5 * Math.sin(p * Math.PI)) * f;
-    camera.position.set(Math.sin(az) * rad, y + 7 + 4 * Math.sin(p * Math.PI), Math.cos(az) * rad);
-    camera.lookAt(0, y - 2, -4);
+    const rad = (13 + 3.5 * Math.sin(p * Math.PI)) * f;
+    camera.position.set(Math.sin(az) * rad, y + 3.5 + 2.5 * Math.sin(p * Math.PI), Math.cos(az) * rad);
+    camera.lookAt(0, y - 0.8, -1.2);
   };
   return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(14, 5, 14) };
 }
