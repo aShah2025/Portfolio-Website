@@ -463,7 +463,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-meta"><span>HIGH-SCHOOL STUDENT</span><span>LELAND HIGH · SAN JOSE, CA</span><span>PORTFOLIO / 2026</span></div>
-        <h1 aria-label="Aaditya Shah"><span><em>Aaditya</em></span><span><em>Shah<i>.</i></em></span></h1>
+        <h1 aria-label="Aaditya Shah" data-scramble><span><em>Aaditya</em></span><span><em>Shah<i>.</i></em></span></h1>
         <div className="hero-bottom">
           <p>I build apps, games, websites,<br />and whatever I want to learn next.</p>
           <a href="#work">See the work <span>↓</span></a>
@@ -492,7 +492,7 @@ export default function Home() {
 
       <section className="about" id="about">
         <div className="about-kicker">01 / ABOUT</div>
-        <div className="about-title" data-reveal><span>Leland</span><span>High,</span><span>San Jose.</span></div>
+        <div className="about-title" data-reveal data-scramble><span>Leland</span><span>High,</span><span>San Jose.</span></div>
         <div className="about-copy" data-reveal>
           <p>I&apos;m in high school at Leland, and went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
           <p>Outside of school I debate policy and Congress, train kung fu, and play piano. I&apos;m also in the Leland Hackathon Club and Leland Motorsport Club.</p>
@@ -502,7 +502,7 @@ export default function Home() {
       <section className="work" id="work">
         <header className="section-head" data-reveal>
           <span>02 / SELECTED WORK</span>
-          <h2>Things I&apos;ve<br />built so far.</h2>
+          <h2 data-scramble>Things I&apos;ve<br />built so far.</h2>
           <p>The five I&apos;m proudest of, across iOS, AI agents, and games. Open any one for what it does and how it works.</p>
         </header>
 
@@ -543,7 +543,7 @@ export default function Home() {
       <section className="recognition" id="recognition">
         <div className="recognition-label">03 / RECOGNITION &amp; HACKATHONS</div>
         <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
-        <p data-reveal>Congressional</p><p data-reveal>recognition<span>.</span></p>
+        <p data-reveal data-scramble>Congressional</p><p data-reveal data-scramble>recognition<span>.</span></p>
         <div className="recognition-footer"><span>Recognized in the Congressional App Challenge 2025 for Kura. Competing again in 2026 with Canary.</span><span>2025 / 2026</span></div>
         <ul className="award-list code-awards">
           {awards.filter((a) => a.code).map((a, i) => (
@@ -555,7 +555,7 @@ export default function Home() {
       </section>
 
       <section className="debate" id="debate">
-        <header className="debate-head" data-reveal><span>04 / DEBATE</span><h2>Argue it,<br />then build it.</h2></header>
+        <header className="debate-head" data-reveal><span>04 / DEBATE</span><h2 data-scramble>Argue it,<br />then build it.</h2></header>
         <div className="debate-grid">
           <article data-reveal>
             <h3>Policy debate</h3>
@@ -572,7 +572,7 @@ export default function Home() {
       </section>
 
       <section className="kungfu" id="kungfu">
-        <header className="kf-head" data-reveal><span>05 / KUNG FU</span><h2><CountUp to={5} /> years<br />on the mat.</h2></header>
+        <header className="kf-head" data-reveal><span>05 / KUNG FU</span><h2 data-scramble><CountUp to={5} /> years<br />on the mat.</h2></header>
         <div className="kf-stats">
           <div data-reveal><b>5 years</b><span>Training</span></div>
           <div data-reveal><b>Red-black belt</b><span>Current rank</span></div>
@@ -591,7 +591,7 @@ export default function Home() {
 
       <section className="piano" id="piano">
         <div className="piano-copy">
-          <header className="kf-head piano-head" data-reveal><span>06 / PIANO</span><h2><CountUp to={6} /> years<br />at the keys.</h2></header>
+          <header className="kf-head piano-head" data-reveal><span>06 / PIANO</span><h2 data-scramble><CountUp to={6} /> years<br />at the keys.</h2></header>
           <div className="kf-stats piano-stats">
             <div data-reveal><b>Classical</b><span>Focus</span></div>
             <div data-reveal><b>RCM Level 9</b><span>Royal Conservatory</span></div>
@@ -616,7 +616,7 @@ export default function Home() {
       <section className="awards" id="awards">
         <header className="awards-head" data-reveal>
           <span>07 / AWARDS &amp; ACTIVITIES</span>
-          <h2>Beyond<br />the code.</h2>
+          <h2 data-scramble>Beyond<br />the code.</h2>
         </header>
         <ul className="award-list">
           {awards.filter((a) => !a.code).map((a, i) => (
@@ -652,7 +652,7 @@ export default function Home() {
       </section>
 
       <footer className="footer">
-        <p>GOT AN IDEA?</p><h2 data-reveal>Let&apos;s build<br />something.</h2>
+        <p>GOT AN IDEA?</p><h2 data-reveal data-scramble>Let&apos;s build<br />something.</h2>
         <div><span>AADITYA SHAH / 2026</span><a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GITHUB ↗</a><a href="#top">BACK TO TOP ↑</a></div>
       </footer>
     </main>
