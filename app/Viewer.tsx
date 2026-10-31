@@ -103,20 +103,22 @@ function printerScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d
   return { update, target: new THREE.Vector3(0, 14, 0), camera: new THREE.Vector3(78, 46, 92) };
 }
 
+// NACA 4-digit airfoil as a closed loop of [chord, thickness] points, chord 0..1: upper surface then lower
+function naca(t: number, m: number, p: number, n: number) {
+  const up: [number, number][] = [], lo: [number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const x = (1 - Math.cos((i / n) * Math.PI)) / 2;
+    const yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4);
+    const yc = m === 0 ? 0 : x < p ? (m / (p * p)) * (2 * p * x - x * x) : (m / ((1 - p) ** 2)) * (1 - 2 * p + 2 * p * x - x * x);
+    const dyc = m === 0 ? 0 : x < p ? ((2 * m) / (p * p)) * (p - x) : ((2 * m) / ((1 - p) ** 2)) * (p - x);
+    const th = Math.atan(dyc);
+    up.push([x - yt * Math.sin(th), yc + yt * Math.cos(th)]); lo.push([x + yt * Math.sin(th), yc - yt * Math.cos(th)]);
+  }
+  return [...up, ...lo.reverse().slice(1)];
+}
+
 function wingScene(THREE: T, scene: THREE_NS.Scene) {
   const root = new THREE.Group(); scene.add(root);
-  const naca = (t: number, m: number, p: number, n: number) => {
-    const up: [number, number][] = [], lo: [number, number][] = [];
-    for (let i = 0; i <= n; i++) {
-      const x = (1 - Math.cos((i / n) * Math.PI)) / 2;
-      const yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4);
-      const yc = x < p ? (m / (p * p)) * (2 * p * x - x * x) : (m / ((1 - p) ** 2)) * (1 - 2 * p + 2 * p * x - x * x);
-      const dyc = x < p ? ((2 * m) / (p * p)) * (p - x) : ((2 * m) / ((1 - p) ** 2)) * (p - x);
-      const th = Math.atan(dyc);
-      up.push([x - yt * Math.sin(th), yc + yt * Math.cos(th)]); lo.push([x + yt * Math.sin(th), yc - yt * Math.cos(th)]);
-    }
-    return [...up, ...lo.reverse().slice(1)];
-  };
   const pts = naca(0.12, 0.04, 0.4, 60).map(([x, y]) => new THREE.Vector2((x - 0.4) * 22, y * 22));
   const shape = new THREE.Shape(pts);
   const wingGeo = new THREE.ExtrudeGeometry(shape, { depth: 30, bevelEnabled: false, curveSegments: 4 });
