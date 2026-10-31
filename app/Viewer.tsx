@@ -562,36 +562,107 @@ function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
   return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(-20, 18, -20), scripted: true };
 }
 
-function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: number, seg: number, r: number) => THREE_NS.BufferGeometry, scene: THREE_NS.Scene) {
+// High-wing four-seat trainer in the shape of a Cessna 172, in meters with the nose toward -z. Every surface is
+// lofted through cross-sections and painted with vertex colours: dark glazing and an orange cheatline, since
+// shade and colour are all that survive the glyph renderer.
+function buildPlane(THREE: T) {
+  const BODY = "#7d8ca1", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
+  const skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.1 });
+  const plain = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+
+  // connect rings of equal length into a closed skin with capped ends; paint(ring, point) picks each vertex colour
+  const loft = (rings: THREE_NS.Vector3[][], paint: (p: THREE_NS.Vector3, r: number) => string) => {
+    const n = rings[0].length, pos: number[] = [], col: number[] = [], idx: number[] = [], c = new THREE.Color();
+    rings.forEach((ring, r) => ring.forEach((p) => { pos.push(p.x, p.y, p.z); c.set(paint(p, r)); col.push(c.r, c.g, c.b); }));
+    for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < n; i++) {
+      const a = r * n + i, b = r * n + ((i + 1) % n), d = a + n, e = b + n;
+      idx.push(a, d, b, b, d, e);
+    }
+    for (const [r, flip] of [[0, true], [rings.length - 1, false]] as const) {
+      const ctr = rings[r].reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(n), ci = pos.length / 3;
+      pos.push(ctr.x, ctr.y, ctr.z); c.set(paint(ctr, r)); col.push(c.r, c.g, c.b);
+      for (let i = 0; i < n; i++) { const a = r * n + i, b = r * n + ((i + 1) % n); idx.push(...(flip ? [ci, b, a] : [ci, a, b])); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, skin); m.castShadow = true; return m;
+  };
+  const rod = (a: number[], b: number[], r: number, m: THREE_NS.Material) => {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 10), m);
+    o.position.copy(A).add(B).multiplyScalar(0.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); return o;
+  };
+
+  const plane = new THREE.Group();
+
+  // fuselage: rounded-square sections from spinner to tail cone [z, half width, half height, centre height]
+  const stations: [number, number, number, number][] = [
+    [-3.38, 0.03, 0.03, -0.06], [-3.25, 0.2, 0.2, -0.06], [-3.0, 0.38, 0.38, -0.06], [-2.82, 0.47, 0.46, -0.05], [-2.55, 0.53, 0.52, -0.03],
+    [-2.1, 0.56, 0.57, 0], [-1.75, 0.57, 0.63, 0.07], [-1.3, 0.58, 0.72, 0.16], [-0.75, 0.58, 0.78, 0.21], [0.55, 0.57, 0.77, 0.2],
+    [1.15, 0.5, 0.64, 0.19], [2.0, 0.38, 0.49, 0.19], [3.0, 0.26, 0.35, 0.21], [4.0, 0.16, 0.25, 0.25], [4.72, 0.07, 0.15, 0.3],
+  ];
+  const SEG = 40;
+  const fuseRings = stations.map(([z, w, h, cy]) => Array.from({ length: SEG }, (_, k) => {
+    const a = (k / SEG) * TAU, cs = Math.cos(a), sn = Math.sin(a), e = 2 / 2.7;
+    return new THREE.Vector3(w * Math.sign(cs) * Math.abs(cs) ** e, cy + h * Math.sign(sn) * Math.abs(sn) ** e, z);
+  }));
+  plane.add(loft(fuseRings, (p, r) => {
+    const [, , h, cy] = stations[Math.min(r, stations.length - 1)], up = (p.y - cy) / h;
+    if (p.z < -2.82) return METAL; // spinner
+    const windshield = p.z > -1.8 && p.z < -0.75 && up > 0.35;
+    const side = p.z > -0.75 && p.z < 1.25 && up > 0.3 && up < 0.88 && Math.abs(p.x) > 0.25;
+    if (windshield || side) return DARK;
+    if (p.z < 3.6 && up > -0.2 && up < -0.04) return ORANGE; // cheatline
+    return BODY;
+  }));
+
+  // wing: NACA 2412 sections, constant chord inboard then tapering, 1.7° dihedral, on top of the cabin
+  const foil = naca(0.12, 0.02, 0.4, 24);
+  const wingRing = (x: number, chord: number, zLE: number, y: number, t = 1) => foil.map(([u, v]) => new THREE.Vector3(x, y + v * chord * t, zLE + u * chord));
+  const wingSpan = [-5.5, -5.35, -2.6, 0, 2.6, 5.35, 5.5];
+  plane.add(loft(wingSpan.map((x) => {
+    const ax = Math.abs(x), chord = ax <= 2.6 ? 1.62 : 1.62 - (ax - 2.6) * 0.17, zLE = -1.05 + (1.62 - chord) * 0.25;
+    return wingRing(x, ax > 5.4 ? chord * 0.8 : chord, zLE, 0.98 + ax * 0.03, ax > 5.4 ? 0.5 : 1);
+  }), (p) => (Math.abs(p.x) > 5.0 ? ORANGE : BODY)));
+
+  // tail: tapered horizontal stabiliser and a swept fin with an orange cap
+  const tfoil = naca(0.09, 0, 0, 16);
+  plane.add(loft([-1.75, -0.2, 0.2, 1.75].map((x) => {
+    const chord = Math.abs(x) < 1 ? 0.85 : 0.55;
+    return tfoil.map(([u, v]) => new THREE.Vector3(x, 0.32 + v * chord, 4.0 + (0.85 - chord) * 0.6 + u * chord));
+  }), () => BODY));
+  const finY = [0.3, 0.9, 1.4, 1.62, 1.75];
+  plane.add(loft(finY.map((y) => {
+    const k = (y - 0.3) / 1.45, chord = 1.25 - k * 0.68, zLE = 3.45 + k * 1.0;
+    return tfoil.map(([u, v]) => new THREE.Vector3(v * chord, y, zLE + u * chord));
+  }), (p) => (p.y > 1.5 ? ORANGE : BODY)));
+
+  // struts, fixed tricycle gear with wheel fairings
+  const metal = plain(METAL), tyre = plain(DARK);
+  for (const s of [-1, 1]) {
+    plane.add(rod([s * 0.5, -0.38, -0.35], [s * 2.6, 0.95, -0.55], 0.035, metal));
+    plane.add(rod([s * 0.45, -0.5, 0.05], [s * 1.25, -1.15, 0.1], 0.045, metal));
+    const pant = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), plain(BODY)); pant.scale.set(0.7, 0.95, 2.1); pant.position.set(s * 1.27, -1.2, 0.08); plane.add(pant);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 18), tyre); wheel.rotation.z = Math.PI / 2; wheel.position.set(s * 1.27, -1.28, 0.08); plane.add(wheel);
+  }
+  plane.add(rod([0, -0.45, -2.35], [0, -1.2, -2.4], 0.04, metal));
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 18), tyre); nose.rotation.z = Math.PI / 2; nose.position.set(0, -1.25, -2.4); plane.add(nose);
+
+  // two-blade prop with a faint blur disc
+  const prop = new THREE.Group(); prop.position.z = -3.05; plane.add(prop);
+  for (const s of [-1, 1]) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.9, 0.03), plain(DARK)); blade.position.y = s * 0.5; blade.rotation.y = s * 0.35; prop.add(blade);
+  }
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.98, 40), new THREE.MeshBasicMaterial({ color: "#8796aa", transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }));
+  disc.position.z = -3.07; plane.add(disc);
+  return { plane, prop };
+}
+
+function flightScene(THREE: T, scene: THREE_NS.Scene) {
   // no sky: the page shows through, and distant ground fades toward paper so it thins into light glyphs
   scene.fog = new THREE.Fog("#eef1f5", 140, 520);
-  const mat = (color: string, rough = 0.55, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
-  const rb = (w: number, h: number, d: number, m: THREE_NS.Material, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), m);
-
-  // --- airplane (high-wing single-engine trainer), nose toward -z
-  const plane = new THREE.Group(); scene.add(plane);
-  const body = new THREE.Group(); plane.add(body);
-  const white = mat("#e8e6e0", 0.4), stripe = mat("#a5654c", 0.5), glass = new THREE.MeshStandardMaterial({ color: "#2a3a44", roughness: 0.1, metalness: 0.2 }), grey = mat("#55595f", 0.5);
-  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 3.6, 8, 24), white); fuse.rotation.x = Math.PI / 2; fuse.scale.set(1, 1, 0.9); body.add(fuse);
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.12, 3.2, 20), white); tail.rotation.x = -Math.PI / 2; tail.position.z = 3.4; tail.position.y = 0.1; body.add(tail);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 0.22, 24, 1, true), stripe); band.rotation.x = Math.PI / 2; band.position.z = 0.4; band.scale.set(1, 1, 0.9); body.add(band);
-  const cabin = rb(1.1, 0.55, 1.7, glass, 0.2); cabin.position.set(0, 0.5, -0.5); body.add(cabin);
-  const wing = rb(10, 0.14, 1.7, white, 0.06); wing.position.set(0, 0.95, -0.4); body.add(wing);
-  const wingTip = (x: number) => { const t = rb(0.5, 0.15, 1.7, stripe, 0.06); t.position.set(x, 0.95, -0.4); body.add(t); };
-  wingTip(-5.1); wingTip(5.1);
-  plane.scale.setScalar(0.6);
-  for (const x of [-1, 1]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), grey); st.position.set(x * 1.9, 0.0, -0.3); st.rotation.z = x * 0.9; body.add(st); }
-  const hstab = rb(3.4, 0.1, 0.8, white, 0.04); hstab.position.set(0, 0.2, 4.8); body.add(hstab);
-  const fin = rb(0.1, 1.2, 0.95, white, 0.04); fin.position.set(0, 0.8, 4.75); fin.rotation.x = -0.25; body.add(fin);
-  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.55, 0.9, 24), grey); cowl.rotation.x = Math.PI / 2; cowl.position.z = -2.25; body.add(cowl);
-  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), stripe); spinner.rotation.x = -Math.PI / 2; spinner.position.z = -2.95; body.add(spinner);
-  const prop = new THREE.Group(); prop.position.z = -2.75; body.add(prop);
-  prop.add(rb(0.16, 2.7, 0.05, mat("#1c1d20", 0.6), 0.02));
-  const gear = new THREE.Group(); body.add(gear);
-  for (const [x, z] of [[-0.9, -0.6], [0.9, -0.6], [0, -2]] as [number, number][]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8), grey); leg.position.set(x, -0.8, z); gear.add(leg);
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.14, 20), mat("#1c1d20", 0.8)); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, -1.25, z); gear.add(wheel);
-  }
+  const { plane, prop } = buildPlane(THREE);
+  plane.scale.setScalar(0.75); scene.add(plane);
 
   // --- real map: San Jose from OpenStreetMap + terrain tiles, drawn as a point cloud
   const U = 1 / 14; // scene units per meter
@@ -630,7 +701,6 @@ function flightScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d:
     plane.rotation.x = THREE.MathUtils.clamp(climbing * 90, -0.35, 0.4) * -1;
     plane.rotation.z = Math.sin(p * 12) * 0.18 * sm(0.1, 0.25, p);
     prop.rotation.z += dt * 40;
-    gear.visible = false;
   };
   const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
     const f = Math.max(1, 1.2 / aspect);
@@ -681,7 +751,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
         kind === "printer" ? printerScene(THREE, RoundedBoxGeometry as never, ParametricGeometry as never, scene, renderer)
         : kind === "desk" ? deskScene(THREE, RoundedBoxGeometry as never, scene)
         : kind === "mac" ? macScene(THREE, RoundedBoxGeometry as never, scene)
-        : kind === "flight" ? flightScene(THREE, RoundedBoxGeometry as never, scene)
+        : kind === "flight" ? flightScene(THREE, scene)
         : kind === "piano" ? pianoScene(THREE, scene)
         : wingScene(THREE, scene);
       const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 500);
