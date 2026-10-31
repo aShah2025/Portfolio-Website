@@ -463,14 +463,31 @@ function buildMac(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
   const SW = W - 0.36, CHIN = 0.72, TOPB = 0.17, SH = D - CHIN - TOPB, SZ = CHIN + SH / 2;
   const screenTex = canvasTex(1512, Math.round(1512 * SH / SW), (g) => {
     const w = g.canvas.width, h = g.canvas.height;
-    // drawn for the glyph renderer: a light screen and very large type, since only big shapes survive as characters
-    g.fillStyle = "#f4f6f9"; g.fillRect(0, 0, w, h);
-    g.fillStyle = "#c9d3e0"; g.fillRect(0, 0, w, 64);
-    g.fillStyle = "#13213a"; g.textBaseline = "alphabetic"; g.textAlign = "left";
-    g.font = "800 300px Helvetica, Arial, sans-serif"; g.fillText("Aaditya", 70, h * 0.5);
-    g.fillText("Shah", 70, h * 0.5 + 290);
-    const m = g.measureText("Shah");
-    g.fillStyle = "#ff5a36"; g.fillRect(70 + m.width + 34, h * 0.5 + 290 - 210, 120, 210);
+    // desktop wallpaper and menu bar
+    const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, "#c9d3e0"); bg.addColorStop(1, "#8a9bb3"); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.fillStyle = "rgba(238,241,245,.82)"; g.fillRect(0, 0, w, 38);
+    g.fillStyle = "#13213a"; g.font = "600 21px -apple-system, Helvetica, Arial, sans-serif"; g.textBaseline = "middle"; g.textAlign = "left";
+    g.fillText("Safari", 52, 19); g.font = "400 21px -apple-system, Helvetica, Arial, sans-serif";
+    ["File", "Edit", "View", "History"].forEach((t, i) => g.fillText(t, 132 + i * 72, 19));
+    g.textAlign = "right"; g.fillText("Fri 9:41 AM", w - 24, 19);
+    g.beginPath(); g.arc(28, 18, 8, 0, TAU); g.fill();
+    // Safari window showing this portfolio in its paper-and-navy palette
+    const wx = 90, wy = 78, ww = w - 180, wh = h - 150;
+    g.fillStyle = "#eef1f5"; g.beginPath(); g.roundRect(wx, wy, ww, wh, 18); g.fill();
+    g.fillStyle = "#e3e8ef"; g.beginPath(); g.roundRect(wx, wy, ww, 56, [18, 18, 0, 0]); g.fill();
+    ["#ff5f57", "#febc2e", "#28c840"].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(wx + 26 + i * 24, wy + 28, 8, 0, TAU); g.fill(); });
+    g.fillStyle = "#f7f9fb"; g.beginPath(); g.roundRect(wx + ww / 2 - 220, wy + 13, 440, 30, 8); g.fill();
+    g.fillStyle = "#5b6b82"; g.textAlign = "center"; g.font = "400 17px -apple-system, Helvetica, Arial, sans-serif"; g.fillText("aaditya-builds.vercel.app", wx + ww / 2, wy + 29);
+    g.textAlign = "left"; g.fillStyle = "#13213a"; g.font = "800 128px Helvetica, Arial, sans-serif";
+    g.fillText("AADITYA", wx + 70, wy + 210); g.fillText("SHAH", wx + 70, wy + 330);
+    g.fillStyle = "#ff5a36"; g.fillRect(wx + 76 + g.measureText("SHAH").width, wy + 300, 26, 26);
+    g.fillStyle = "#5b6b82"; g.font = "400 26px Helvetica, Arial, sans-serif"; g.fillText("I build apps, games, websites, and whatever I want to learn next.", wx + 74, wy + 410);
+    ["Kura", "Canary", "CultureRisk"].forEach((label, i) => {
+      const x = wx + 74 + i * 330, y = wy + 470;
+      g.strokeStyle = "rgba(19,33,58,.2)"; g.lineWidth = 2; g.beginPath(); g.roundRect(x, y, 300, 110, 10); g.stroke();
+      g.fillStyle = "#5b6b82"; g.font = "600 16px Menlo, monospace"; g.fillText(`0${i + 1}`, x + 22, y + 34);
+      g.fillStyle = "#13213a"; g.font = "700 34px Helvetica, Arial, sans-serif"; g.fillText(label, x + 22, y + 78);
+    });
   });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }));
   screen.rotation.x = Math.PI / 2; screen.position.set(0, 0.006, SZ); lid.add(screen);
