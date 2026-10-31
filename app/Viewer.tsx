@@ -496,9 +496,9 @@ function deskScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: n
 
   // small solar system hovering beside the laptop
   const sys = new THREE.Group(); sys.position.set(12.5, 9, 1); sys.rotation.z = 0.32; root.add(sys);
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), new THREE.MeshStandardMaterial({ color: "#e3d4ae", emissive: "#d9c590", emissiveIntensity: 1.1, roughness: 0.6 })); sys.add(sun);
-  const glow = new THREE.PointLight("#f3e3bd", 18, 26, 2); sys.add(glow);
-  const defs = [{ r: 0.28, o: 2.3, s: 0.9, c: "#a5654c" }, { r: 0.42, o: 3.5, s: 0.6, c: "#8fa3b3" }, { r: 0.52, o: 4.8, s: 0.4, c: "#a8b39a", ring: true }, { r: 0.32, o: 6.1, s: 0.26, c: "#c9bca0" }];
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), new THREE.MeshBasicMaterial({ color: "#ff5a36" })); sys.add(sun);
+  const glow = new THREE.PointLight("#ffd9cc", 18, 26, 2); sys.add(glow);
+  const defs = [{ r: 0.28, o: 2.3, s: 0.9, c: "#5b6b82" }, { r: 0.42, o: 3.5, s: 0.6, c: "#2a3a55" }, { r: 0.52, o: 4.8, s: 0.4, c: "#8a98ad", ring: true }, { r: 0.32, o: 6.1, s: 0.26, c: "#13213a" }];
   const planets = defs.map((d, i) => {
     const pts: THREE_NS.Vector3[] = []; for (let k = 0; k <= 96; k++) pts.push(new THREE.Vector3(Math.cos((k / 96) * TAU) * d.o, 0, Math.sin((k / 96) * TAU) * d.o));
     sys.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: "#cfd3d6", transparent: true, opacity: 0.22 })));
