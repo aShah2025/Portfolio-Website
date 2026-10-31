@@ -675,17 +675,17 @@ function flightScene(THREE: T, scene: THREE_NS.Scene) {
     const q = new Int16Array(pb), ty = new Uint8Array(tb), n = ty.length;
     mapLen = meta.length;
     const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-    const palette = [new THREE.Color("#6f8580"), new THREE.Color("#9db4c4"), new THREE.Color("#f0dfb4")];
+    const palette = [new THREE.Color("#c4cdd8"), new THREE.Color("#aebfd0"), new THREE.Color("#dde3ea")];
     for (let i = 0; i < n; i++) {
       pos[i * 3] = q[i * 3] * 0.25 * U; pos[i * 3 + 1] = q[i * 3 + 1] * 0.1 * U * 1.6; pos[i * 3 + 2] = q[i * 3 + 2] * 0.25 * U;
       const c = palette[ty[i]]; col.set([c.r, c.g, c.b], i * 3);
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    city.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95 })));
+    city.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.32, depthWrite: false })));
     // marker for Leland High School
     const c = document.createElement("canvas"); c.width = 512; c.height = 128;
-    const x = c.getContext("2d")!; x.fillStyle = "#ece8df"; x.font = "700 52px Helvetica, Arial, sans-serif"; x.textAlign = "center"; x.fillText("Leland High", 256, 70);
-    x.fillStyle = "#a5654c"; x.beginPath(); x.arc(256, 104, 9, 0, TAU); x.fill();
+    const x = c.getContext("2d")!; x.fillStyle = "#13213a"; x.font = "700 52px Helvetica, Arial, sans-serif"; x.textAlign = "center"; x.fillText("Leland High", 256, 70);
+    x.fillStyle = "#ff5a36"; x.beginPath(); x.arc(256, 104, 9, 0, TAU); x.fill();
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, fog: false }));
     sp.scale.set(14, 3.5, 1); sp.position.set(meta.leland.x * U, meta.leland.y * 0.1 * U * 1.6 + 5, meta.leland.z * U); city.add(sp); lelandMarker = sp;
   }).catch(() => {});
