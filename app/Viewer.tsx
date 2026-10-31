@@ -733,26 +733,29 @@ function flightScene(THREE: T, scene: THREE_NS.Scene) {
 
 type GLTFLoaderT = { loadAsync: (url: string) => Promise<{ scene: THREE_NS.Group }> };
 
-// Mercedes-AMG GT R on an open two-lane road. The car holds still while the road streams past; scroll swings the
-// camera from a low front three-quarter, past the side profile, to a chase view. Paint is reassigned by material
-// name so the body reads as mid-tone glyphs, glass and rubber as dense ones, and only calipers and tail lights orange.
+// Mercedes-AMG GT R on an open two-lane road. While it idles the camera circles from a low front three-quarter
+// to the side profile; then it launches and pulls away down the road, with the camera following at a distance
+// it can't hold. Paint is reassigned by material name: deep navy metallic, orange calipers and tail lights.
 function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
-  scene.fog = new THREE.Fog("#eef1f5", 28, 120);
+  scene.fog = new THREE.Fog("#eef1f5", 40, 190);
   const car = new THREE.Group(); scene.add(car);
   const wheels: THREE_NS.Object3D[] = [];
-  const paint = (name: string) => {
-    if (/Red\.002|Glass - Red/.test(name)) return "#ff5a36";
-    if (/Glass|Window|Tire|Rubber|Interior|Plastic|Material\.001/.test(name)) return "#1c2a44";
-    if (/Car Paint - Black|Metal - Black/.test(name)) return "#33435c";
-    if (/Chrome|Brake Disc|logo/.test(name)) return "#c3ccd8";
-    return "#7a8aa0";
+  const material = (name: string): THREE_NS.Material => {
+    if (/Red\.002/.test(name)) return new THREE.MeshStandardMaterial({ color: "#ff5a36", roughness: 0.4 });
+    if (/Glass - Red/.test(name)) return new THREE.MeshStandardMaterial({ color: "#ff3b1f", emissive: "#ff3b1f", emissiveIntensity: 0.6, roughness: 0.2 });
+    if (/Glass - Clear/.test(name)) return new THREE.MeshStandardMaterial({ color: "#e8edf3", roughness: 0.05, metalness: 0.3 });
+    if (/Glass|Window/.test(name)) return new THREE.MeshStandardMaterial({ color: "#0d1420", roughness: 0.05, metalness: 0.9 });
+    if (/Tire|Rubber/.test(name)) return new THREE.MeshStandardMaterial({ color: "#16181c", roughness: 0.9 });
+    if (/Interior|Plastic|Material\.001/.test(name)) return new THREE.MeshStandardMaterial({ color: "#1a1d22", roughness: 0.8 });
+    if (/Chrome|Brake Disc|logo/.test(name)) return new THREE.MeshStandardMaterial({ color: "#d9dde3", roughness: 0.18, metalness: 1 });
+    if (/Car Paint - Black|Metal - Black/.test(name)) return new THREE.MeshPhysicalMaterial({ color: "#16191f", roughness: 0.35, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 });
+    return new THREE.MeshPhysicalMaterial({ color: "#1f2d47", roughness: 0.32, metalness: 0.65, clearcoat: 1, clearcoatRoughness: 0.05 });
   };
   loader.loadAsync("/models/amg-gtr.glb").then(({ scene: model }) => {
     model.traverse((o) => {
       const m = o as THREE_NS.Mesh;
       if (!m.isMesh) return;
-      const name = (m.material as THREE_NS.Material).name;
-      m.material = new THREE.MeshStandardMaterial({ color: paint(name), roughness: /Glass/.test(name) ? 0.1 : 0.4, metalness: /Chrome|Metal/.test(name) ? 0.6 : 0.15 });
+      m.material = material((m.material as THREE_NS.Material).name);
       m.castShadow = true;
     });
     model.updateMatrixWorld(true);
@@ -770,38 +773,36 @@ function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
     }
   }).catch(() => {});
 
-  // road: light surface, dark edge lines, dashed centre line and posts on the shoulder, all scrolling toward the camera
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 260), new THREE.MeshStandardMaterial({ color: "#c9d2dc", roughness: 0.95, transparent: true, opacity: 0.3 }));
-  road.rotation.x = -Math.PI / 2; road.position.set(-1.8, 0, -100); road.receiveShadow = true; scene.add(road);
+  // road: surface, edge lines, dashed centre line and posts on the shoulder, long enough for the whole run
+  const ROAD = 360, mid = -ROAD / 2 + 40;
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.6, ROAD), new THREE.MeshStandardMaterial({ color: "#d3d9e1", roughness: 0.95 }));
+  road.rotation.x = -Math.PI / 2; road.position.set(-1.8, 0, mid); road.receiveShadow = true; scene.add(road);
   const ink = new THREE.MeshStandardMaterial({ color: "#13213a", roughness: 0.8 });
-  for (const x of [1.95, -5.55]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 260), ink); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.01, -100); scene.add(l); }
-  const moving = new THREE.Group(); scene.add(moving);
-  const DASH = 9;
-  for (let z = -230; z < 30; z += DASH) {
-    const d = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 3), ink); d.rotation.x = -Math.PI / 2; d.position.set(-1.8, 0.01, z); moving.add(d);
-  }
-  const POST = 18, postMat = new THREE.MeshStandardMaterial({ color: "#5b6b82", roughness: 0.6 });
-  for (let z = -234; z < 30; z += POST) for (const x of [3.3, -6.9]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), postMat); p.position.set(x, 0.5, z); p.castShadow = true; moving.add(p);
-  }
+  for (const x of [1.95, -5.55]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.16, ROAD), ink); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.01, mid); scene.add(l); }
+  for (let z = 40; z > 40 - ROAD; z -= 9) { const d = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 3), ink); d.rotation.x = -Math.PI / 2; d.position.set(-1.8, 0.01, z); scene.add(d); }
+  const postMat = new THREE.MeshStandardMaterial({ color: "#5b6b82", roughness: 0.6 });
+  for (let z = 36; z > 40 - ROAD; z -= 18) for (const x of [3.3, -6.9]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), postMat); p.position.set(x, 0.5, z); p.castShadow = true; scene.add(p); }
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.005; ground.receiveShadow = true; scene.add(ground);
 
   const ease = (x: number) => x * x * (3 - 2 * x);
   const seg = (p: number, a: number, b: number) => ease(Math.min(1, Math.max(0, (p - a) / (b - a))));
-  let travel = 0;
-  const update = (dt: number, still: boolean) => {
-    const v = still ? 0 : 22; // m/s, about 50 mph
-    travel += v * dt;
-    moving.position.z = travel % POST; // posts every 18 m line up with dashes every 9 m
-    for (const w of wheels) w.rotation.x -= (v * dt) / 0.36; // roll toward -z on a 0.36 m tyre radius
+  let lastDist = 0;
+  const update = (_dt: number, _still: boolean, p: number) => {
+    const { dist } = drive(p);
+    car.position.z = -dist;
+    for (const w of wheels) w.rotation.x -= (dist - lastDist) / 0.36; // roll toward -z on a 0.36 m tyre radius
+    lastDist = dist;
   };
   const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
-    const f = Math.max(1, 1.25 / aspect);
-    // azimuth measured from the nose: front three-quarter, side profile, then the chase view
-    const az = THREE.MathUtils.lerp(0.55, Math.PI * 0.5, seg(p, 0, 0.45)) + (Math.PI * 0.4) * seg(p, 0.5, 0.95);
-    const r = THREE.MathUtils.lerp(9.6, 10.6, seg(p, 0.5, 0.95)) * f;
-    const h = THREE.MathUtils.lerp(1.6, 3.2, seg(p, 0.45, 1));
-    camera.position.set(Math.sin(az) * r, h, -Math.cos(az) * r);
-    camera.lookAt(0, 0.55, THREE.MathUtils.lerp(0, -2.5, seg(p, 0.5, 1)));
+    const f = Math.max(1, 1.25 / aspect), z = car.position.z;
+    // idle: azimuth measured from the nose sweeps from the front three-quarter round to the side
+    const az = THREE.MathUtils.lerp(0.55, 1.45, seg(p, 0, LAUNCH));
+    const orbit = new THREE.Vector3(Math.sin(az) * 9.6 * f, 1.4, -Math.cos(az) * 9.6 * f);
+    // launch: drop in behind and follow at 60% of the car's distance, so it pulls away
+    const chase = new THREE.Vector3(1.4, 2.1, z * 0.6 + 9 * f);
+    camera.position.lerpVectors(orbit, chase, seg(p, LAUNCH, LAUNCH + 0.15));
+    camera.lookAt(0, 0.6, z);
   };
   return { update, frame, target: new THREE.Vector3(0, 0.6, 0), camera: new THREE.Vector3(4, 1, -6) };
 }
