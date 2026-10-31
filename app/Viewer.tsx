@@ -5,7 +5,7 @@ import type * as THREE_NS from "three";
 import { pianoPlayer, type Note } from "./pianoPlayer";
 import { makeGlyphPass } from "./glyphPass";
 
-type Scene = "printer" | "wing" | "desk" | "mac" | "flight" | "piano";
+type Scene = "printer" | "wing" | "desk" | "mac" | "flight" | "piano" | "car";
 type Frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => void;
 type T = typeof THREE_NS;
 
@@ -713,6 +713,81 @@ function flightScene(THREE: T, scene: THREE_NS.Scene) {
   return { update, frame, target: new THREE.Vector3(0, 2, 0), camera: new THREE.Vector3(14, 5, 14) };
 }
 
+type GLTFLoaderT = { loadAsync: (url: string) => Promise<{ scene: THREE_NS.Group }> };
+
+// Mercedes-AMG GT R on an open two-lane road. The car holds still while the road streams past; scroll swings the
+// camera from a low front three-quarter, past the side profile, to a chase view. Paint is reassigned by material
+// name so the body reads as mid-tone glyphs, glass and rubber as dense ones, and only calipers and tail lights orange.
+function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
+  scene.fog = new THREE.Fog("#eef1f5", 28, 120);
+  const car = new THREE.Group(); scene.add(car);
+  const wheels: THREE_NS.Object3D[] = [];
+  const paint = (name: string) => {
+    if (/Red\.002|Glass - Red/.test(name)) return "#ff5a36";
+    if (/Glass|Window|Tire|Rubber|Interior|Plastic|Material\.001/.test(name)) return "#1c2a44";
+    if (/Car Paint - Black|Metal - Black/.test(name)) return "#33435c";
+    if (/Chrome|Brake Disc|logo/.test(name)) return "#c3ccd8";
+    return "#7a8aa0";
+  };
+  loader.loadAsync("/models/amg-gtr.glb").then(({ scene: model }) => {
+    model.traverse((o) => {
+      const m = o as THREE_NS.Mesh;
+      if (!m.isMesh) return;
+      const name = (m.material as THREE_NS.Material).name;
+      m.material = new THREE.MeshStandardMaterial({ color: paint(name), roughness: /Glass/.test(name) ? 0.1 : 0.4, metalness: /Chrome|Metal/.test(name) ? 0.6 : 0.15 });
+      m.castShadow = true;
+    });
+    model.updateMatrixWorld(true);
+    // face the nose down -z, the way the road runs
+    const front = model.getObjectByName("FT-L001");
+    const fz = front ? new THREE.Box3().setFromObject(front).getCenter(new THREE.Vector3()).z : -1;
+    if (fz > 0) { model.rotation.y = Math.PI; model.updateMatrixWorld(true); }
+    car.add(model);
+    // re-pivot each rotating wheel part on its own axle so it can roll
+    for (const n of ["FT-L001", "FT-R001", "BK-L001", "BK-R001", "FT-D-L001", "FT-D-R001", "BK-D-L001", "BK-D-R001"]) {
+      const part = model.getObjectByName(n);
+      if (!part) continue;
+      const pivot = new THREE.Group(); pivot.position.copy(new THREE.Box3().setFromObject(part).getCenter(new THREE.Vector3()));
+      car.add(pivot); pivot.attach(part); wheels.push(pivot);
+    }
+  }).catch(() => {});
+
+  // road: light surface, dark edge lines, dashed centre line and posts on the shoulder, all scrolling toward the camera
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 260), new THREE.MeshStandardMaterial({ color: "#c9d2dc", roughness: 0.95, transparent: true, opacity: 0.3 }));
+  road.rotation.x = -Math.PI / 2; road.position.set(-1.8, 0, -100); road.receiveShadow = true; scene.add(road);
+  const ink = new THREE.MeshStandardMaterial({ color: "#13213a", roughness: 0.8 });
+  for (const x of [1.95, -5.55]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 260), ink); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.01, -100); scene.add(l); }
+  const moving = new THREE.Group(); scene.add(moving);
+  const DASH = 9;
+  for (let z = -230; z < 30; z += DASH) {
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 3), ink); d.rotation.x = -Math.PI / 2; d.position.set(-1.8, 0.01, z); moving.add(d);
+  }
+  const POST = 18, postMat = new THREE.MeshStandardMaterial({ color: "#5b6b82", roughness: 0.6 });
+  for (let z = -234; z < 30; z += POST) for (const x of [3.3, -6.9]) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), postMat); p.position.set(x, 0.5, z); p.castShadow = true; moving.add(p);
+  }
+
+  const ease = (x: number) => x * x * (3 - 2 * x);
+  const seg = (p: number, a: number, b: number) => ease(Math.min(1, Math.max(0, (p - a) / (b - a))));
+  let travel = 0;
+  const update = (dt: number, still: boolean) => {
+    const v = still ? 0 : 22; // m/s, about 50 mph
+    travel += v * dt;
+    moving.position.z = travel % POST; // posts every 18 m line up with dashes every 9 m
+    for (const w of wheels) w.rotation.x -= (v * dt) / 0.36; // roll toward -z on a 0.36 m tyre radius
+  };
+  const frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => {
+    const f = Math.max(1, 1.25 / aspect);
+    // azimuth measured from the nose: front three-quarter, side profile, then the chase view
+    const az = THREE.MathUtils.lerp(0.55, Math.PI * 0.5, seg(p, 0, 0.45)) + (Math.PI * 0.4) * seg(p, 0.5, 0.95);
+    const r = THREE.MathUtils.lerp(9.6, 10.6, seg(p, 0.5, 0.95)) * f;
+    const h = THREE.MathUtils.lerp(1.6, 3.2, seg(p, 0.45, 1));
+    camera.position.set(Math.sin(az) * r, h, -Math.cos(az) * r);
+    camera.lookAt(0, 0.55, THREE.MathUtils.lerp(0, -2.5, seg(p, 0.5, 1)));
+  };
+  return { update, frame, target: new THREE.Vector3(0, 0.6, 0), camera: new THREE.Vector3(4, 1, -6) };
+}
+
 export default function Viewer({ kind, label, progress }: { kind: Scene; label: string; progress?: { current: number } }) {
   const host = useRef<HTMLDivElement>(null);
 
@@ -727,6 +802,12 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
       const { RoundedBoxGeometry } = await import("three/examples/jsm/geometries/RoundedBoxGeometry.js");
       const { ParametricGeometry } = await import("three/examples/jsm/geometries/ParametricGeometry.js");
+      let gltf: GLTFLoaderT | null = null;
+      if (kind === "car") {
+        const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+        const { MeshoptDecoder } = await import("three/examples/jsm/libs/meshopt_decoder.module.js");
+        gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      }
       if (disposed) return;
       let renderer: THREE_NS.WebGLRenderer;
       try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch { return; }
@@ -753,6 +834,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
         : kind === "mac" ? macScene(THREE, RoundedBoxGeometry as never, scene)
         : kind === "flight" ? flightScene(THREE, scene)
         : kind === "piano" ? pianoScene(THREE, scene)
+        : kind === "car" && gltf ? carScene(THREE, scene, gltf)
         : wingScene(THREE, scene);
       const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 500);
       camera.position.copy(s.camera);
@@ -760,7 +842,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
       controls.target.copy(s.target);
       controls.enableDamping = true; controls.enablePan = false; controls.enableZoom = false;
       controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
-      if (kind === "mac" || kind === "flight") controls.enabled = false;
+      if (kind === "mac" || kind === "flight" || kind === "car") controls.enabled = false;
       controls.autoRotate = kind !== "desk"; controls.autoRotateSpeed = 0.6;
       if (kind === "desk") { controls.minAzimuthAngle = -0.7; controls.maxAzimuthAngle = 0.9; controls.minPolarAngle = 1.0; controls.maxPolarAngle = 1.55; }
 
