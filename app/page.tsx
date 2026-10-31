@@ -229,6 +229,14 @@ function flightHud(p: number, el: HTMLElement) {
   if (bar) bar.style.transform = `scaleX(${p})`;
 }
 
+function driveHud(p: number, el: HTMLElement) {
+  const mph = el.querySelector<HTMLElement>("[data-mph]");
+  if (mph) mph.textContent = String(Math.round(50 * Math.min(1, p / 0.2)));
+  el.querySelectorAll<HTMLElement>("[data-cp]").forEach((c) => c.classList.toggle("on", p >= Number(c.dataset.cp)));
+  const bar = el.querySelector<HTMLElement>("[data-bar]");
+  if (bar) bar.style.transform = `scaleX(${p})`;
+}
+
 function statementWords(p: number, el: HTMLElement) {
   const words = el.querySelectorAll<HTMLElement>("[data-w]");
   words.forEach((w, i) => {
@@ -369,7 +377,7 @@ function Art({ id }: { id: string }) {
   }
 }
 
-const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"], ["goal", "Goal"]];
+const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"], ["drive", "Drive"], ["goal", "Goal"]];
 
 // The piano starts sounding when its section scrolls into view (once the visitor has interacted with the page,
 // which browsers require for audio) and pauses when it leaves. Pausing it by hand keeps it paused.
@@ -434,6 +442,7 @@ export default function Home() {
   const nav = useRef<HTMLElement>(null);
   const macRef = useRef<HTMLElement>(null);
   const stRef = useRef<HTMLElement>(null);
+  const driveRef = useRef<HTMLElement>(null);
   const flightRef = useRef<HTMLElement>(null);
   useReveal();
   useScramble();
@@ -442,6 +451,7 @@ export default function Home() {
   useScrollProgress(progress);
   const macP = usePin(macRef);
   usePin(stRef, statementWords);
+  const driveP = usePin(driveRef, driveHud);
   const flightP = usePin(flightRef, flightHud);
   useEffect(() => {
     const on = () => nav.current?.classList.toggle("scrolled", window.scrollY > 60);
@@ -632,11 +642,28 @@ export default function Home() {
         </ul>
       </section>
 
+      <section className="pin pin-drive" id="drive" ref={driveRef} aria-label="Scroll story: working toward a driver's licence">
+        <div className="pin-sticky">
+          <Viewer kind="car" progress={driveP} label="3D Mercedes-AMG GT R driving down an open road as you scroll" />
+          <div className="pin-text">
+            <p className="stage kicker" data-in="-0.1" data-out="0.22"><small>08 / NEXT UP</small>Driver&apos;s licence.</p>
+            <p className="stage" data-in="0.26" data-out="0.48">Learner&apos;s permit first.</p>
+            <p className="stage" data-in="0.52" data-out="0.74">Then the hours behind the wheel.</p>
+            <p className="stage" data-in="0.78" data-out="1.1">Then the road test.</p>
+          </div>
+          <div className="hud" aria-hidden="true">
+            <div><span>SPD</span><b data-mph>0</b><span>MPH</span></div>
+            <ol><li data-cp="0.05">Learner&apos;s permit</li><li data-cp="0.5">Practice hours</li><li data-cp="0.8">Road test</li></ol>
+            <i><u data-bar /></i>
+          </div>
+        </div>
+      </section>
+
       <section className="pin pin-flight" id="goal" ref={flightRef} aria-label="Scroll story: working toward a private pilot licence">
         <div className="pin-sticky">
           <Viewer kind="flight" progress={flightP} label="3D single-engine airplane flying over terrain as you scroll" />
           <div className="pin-text">
-            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>08 / THE GOAL</small>Private pilot licence.</p>
+            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>09 / THE GOAL</small>Private pilot licence.</p>
             <p className="stage" data-in="0.24" data-out="0.46">Ground school first.</p>
             <p className="stage" data-in="0.5" data-out="0.72">Then the first solo.</p>
             <p className="stage" data-in="0.76" data-out="1.1">Then the checkride.</p>
