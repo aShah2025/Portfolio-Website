@@ -503,7 +503,7 @@ export default function Home() {
         </div>
         <div className="also-built" data-reveal>
           <span>Also built</span>
-          <ul>{projects.filter((p) => !featured.includes(p.id)).map((p) => <li key={p.id}><b style={{ color: p.color }}>{p.name}</b> {p.short}</li>)}</ul>
+          <ul>{projects.filter((p) => !featured.includes(p.id)).map((p) => <li key={p.id}><b>{p.name}</b> {p.short}</li>)}</ul>
         </div>
       </section>
 
