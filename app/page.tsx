@@ -135,6 +135,38 @@ function useReveal() {
   }, []);
 }
 
+// Headlines arrive as random symbols that settle into the real letters from left to right, the same glyphs
+// the 3D scenes are drawn with. Text inside [data-noscramble] (the count-ups) is left alone.
+const SCRAMBLE = "/?<>%*#@+=:;";
+function useScramble() {
+  useEffect(() => {
+    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-scramble]"));
+    const raf: number[] = [];
+    const run = (el: HTMLElement) => {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const nodes: [Text, string][] = [];
+      while (walker.nextNode()) { const t = walker.currentNode as Text; if (t.data.trim() && !t.parentElement?.closest("[data-noscramble]")) nodes.push([t, t.data]); }
+      const total = nodes.reduce((n, [, s]) => n + s.length, 0);
+      const t0 = performance.now(), dur = Math.min(1500, 450 + total * 30);
+      const step = (now: number) => {
+        const k = (now - t0) / dur;
+        let i = 0;
+        for (const [node, orig] of nodes) node.data = Array.from(orig, (ch) => (ch === " " || i++ / total < k ? ch : SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0])).join("");
+        if (k < 1) raf.push(requestAnimationFrame(step));
+        else nodes.forEach(([n, o]) => { n.data = o; });
+      };
+      raf.push(requestAnimationFrame(step));
+    };
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) { io.unobserve(e.target); run(e.target as HTMLElement); } }),
+      { threshold: 0.3 },
+    );
+    els.forEach((el) => { if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", el.innerText.replace(/\s+/g, " ").trim()); io.observe(el); });
+    return () => { io.disconnect(); raf.forEach(cancelAnimationFrame); };
+  }, []);
+}
+
 function useScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     let raf = 0;
@@ -221,7 +253,7 @@ function CountUp({ to }: { to: number }) {
     io.observe(el);
     return () => io.disconnect();
   }, [to]);
-  return <span ref={ref}>{to}</span>;
+  return <span ref={ref} data-noscramble>{to}</span>;
 }
 
 function Art({ id }: { id: string }) {
@@ -404,6 +436,7 @@ export default function Home() {
   const stRef = useRef<HTMLElement>(null);
   const flightRef = useRef<HTMLElement>(null);
   useReveal();
+  useScramble();
   const active = useActiveSection();
   const { player, toggle, choose } = usePiano();
   useScrollProgress(progress);
