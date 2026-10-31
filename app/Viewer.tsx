@@ -324,7 +324,7 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   let nextNote = 0;
 
   // the keys play whichever piece is loaded in the player: in step with the audio when it's on, silently otherwise
-  const accent = new THREE.Color("#7df2c4");
+  const accent = new THREE.Color("#ff5a36");
   const press = new Float32Array(88);
   let time = 0, prevT = -1, idx = 0, notes: Note[] = [];
   const hit = ([, m, v]: Note) => {
