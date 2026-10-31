@@ -106,6 +106,7 @@ const projects: Project[] = [
 ];
 
 const awards = [
+  { year: "NOW", title: "Top 10% on GitHub", note: "github.com/aShah2025", kind: "RANKING", href: "https://github.com/aShah2025", code: true },
   { year: "2026", title: "Congressional App Challenge", note: "Competing again with Canary", kind: "IN PROGRESS", href: "#canary" , code: true },
   { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" , code: true },
   { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" , code: true },
@@ -558,7 +559,7 @@ export default function Home() {
         <ul className="award-list code-awards">
           {awards.filter((a) => a.code).map((a, i) => (
             <li className="award" key={a.title} data-reveal style={{ "--i": i } as React.CSSProperties}>
-              <a href={a.href}><span className="award-year">{a.year}</span><span className="award-title">{a.title}</span><span className="award-note">{a.note}</span><span className="award-kind">{a.kind}</span></a>
+              <a href={a.href} {...(a.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}><span className="award-year">{a.year}</span><span className="award-title">{a.title}</span><span className="award-note">{a.note}</span><span className="award-kind">{a.kind}</span></a>
             </li>
           ))}
         </ul>
