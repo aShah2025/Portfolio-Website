@@ -205,15 +205,15 @@ button:focus-visible, a:focus-visible { outline: 4px solid var(--lime); outline-
 
 /* scroll-driven pinned scenes */
 .pin { position: relative; height: 280vh; background: var(--paper); color: var(--ink); }
-.pin-flight { height: 360vh; }
+.pin-flight, .pin-drive { height: 360vh; }
 .pin-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 .pin-sticky .viewer { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; cursor: default; }
 .pin-text { position: absolute; inset: 14vh clamp(22px,4vw,68px) auto; pointer-events: none; text-align: center; }
 .stage { position: absolute; inset: 0 0 auto; margin: 0; opacity: 0; font-size: clamp(2rem,5.2vw,5.4rem); line-height: 1; font-weight: 700; letter-spacing: -.05em; text-shadow: 0 2px 30px rgba(238,241,245,.7); will-change: opacity, transform; }
 .stage small { display: block; margin-bottom: 18px; font: 700 .78rem var(--font-geist-mono); letter-spacing: .14em; opacity: .75; }
 .scroll-hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); font: 700 .7rem var(--font-geist-mono); letter-spacing: .18em; text-transform: uppercase; opacity: .6; animation: bob 1.4s ease-in-out infinite alternate; }
-.pin-flight .pin-text { text-align: left; }
-.pin-flight .stage { font-size: clamp(2rem,4.6vw,4.8rem); }
+.pin-flight .pin-text, .pin-drive .pin-text { text-align: left; }
+.pin-flight .stage, .pin-drive .stage { font-size: clamp(2rem,4.6vw,4.8rem); }
 .hud { position: absolute; right: clamp(22px,4vw,68px); bottom: clamp(26px,5vh,60px); width: min(300px, 70vw); padding: 18px 20px; display: grid; gap: 12px; border: 1px solid rgba(19,33,58,.22); background: rgba(238,241,245,.72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); font: 650 .72rem var(--font-geist-mono); letter-spacing: .1em; }
 .hud > div { display: flex; align-items: baseline; gap: 10px; } .hud b { font-size: 1.6rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .hud ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; text-transform: uppercase; }
@@ -223,7 +223,7 @@ button:focus-visible, a:focus-visible { outline: 4px solid var(--lime); outline-
 .statement .pin-sticky { display: grid; place-items: center; padding: 0 clamp(22px,6vw,110px); }
 .statement p { max-width: 20ch; margin: 0; font-size: clamp(2.2rem,5.4vw,5.8rem); line-height: 1.04; font-weight: 700; letter-spacing: -.055em; }
 .statement p span { transition: opacity .15s linear; opacity: .16; }
-@media (max-width: 850px) { .pin { height: 250vh; } .pin-flight { height: 320vh; } .pin-text { inset-block-start: 12vh; } .hud { left: 22px; right: 22px; width: auto; bottom: 20px; } }
+@media (max-width: 850px) { .pin { height: 250vh; } .pin-flight, .pin-drive { height: 320vh; } .pin-text { inset-block-start: 12vh; } .hud { left: 22px; right: 22px; width: auto; bottom: 20px; } }
 
 /* kung fu */
 .kungfu { padding: clamp(80px,9vw,140px) clamp(22px,4vw,68px); background: var(--paper); color: var(--ink); }
