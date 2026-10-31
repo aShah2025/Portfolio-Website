@@ -185,8 +185,10 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   const inner = inset(0.32), plateEdge = inset(0.55), strEnd = inset(0.75), bridgeLine = inset(1.5), plateBand = inset(1.25);
 
   const pos: number[] = [], col: number[] = [];
-  const C = (hex: string, k = 1) => { const c = new THREE.Color(hex); return [c.r * k, c.g * k, c.b * k]; };
-  const CASE = C("#e8e6df"), CASE_DIM = C("#e8e6df", 0.5), GOLD = C("#d4ab55"), GOLD_DIM = C("#d4ab55", 0.62), STEEL = C("#dfe3e8", 0.85), COPPER = C("#d98a50", 1),
+  // drawn in navy on the paper background: k < 1 fades a colour toward the paper rather than toward black
+  const PAPER = new THREE.Color("#eef1f5");
+  const C = (hex: string, k = 1) => { const c = PAPER.clone().lerp(new THREE.Color(hex), k); return [c.r, c.g, c.b]; };
+  const CASE = C("#13213a"), CASE_DIM = C("#13213a", 0.5), GOLD = C("#b8892e"), GOLD_DIM = C("#b8892e", 0.62), STEEL = C("#5b6b82", 0.85), COPPER = C("#c4642a", 1),
     WOOD = C("#a77a4c", 0.85), BOARD = C("#a07a4c", 0.45), FELT = C("#b4bac0", 0.6), BRASS = C("#e2bb63");
   const add = (x: number, y: number, z: number, c: number[]) => { pos.push(x, y, z); col.push(c[0], c[1], c[2]); };
   const line = (a: number[], b: number[], step: number, c: number[]) => {
@@ -204,7 +206,7 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
 
   // soundboard with ribs running across the grain
   for (let x = -7.2; x <= 7.2; x += 0.34) for (let d = 1; d <= 21.2; d += 0.34) if (insideOf(inner, x, d)) add(x, 6.95, -d, BOARD);
-  for (let r = -16; r <= 22; r += 2.2) for (let t = 0; t <= 26; t += 0.16) { const x = -7.5 + t * 0.62, d = r + t * 0.78; if (insideOf(inner, x, d) && d > 4) add(x, 6.98, -d, C("#8a6a45", 0.55)); }
+  for (let r = -16; r <= 22; r += 2.2) for (let t = 0; t <= 26; t += 0.16) { const x = -7.5 + t * 0.62, d = r + t * 0.78; if (insideOf(inner, x, d) && d > 4) add(x, 6.98, -d, C("#8a6a45", 0.45)); }
 
   // bridges: the long treble bridge follows the bentside, the short bass bridge sits near the tail
   for (const [x, d] of bridgeLine) if (x > -3.3 && d > 3.6 && d < 20.6) { add(x, 7.15, -d, WOOD); add(x, 7.35, -d, WOOD); }
@@ -240,9 +242,9 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   // lid on its hinges along the straight bass side, with the front flap fold and prop stick
   const lid = new THREE.Group(); lid.position.set(-7.5, RIM_HI + 0.2, 0); lid.rotation.z = THREE.MathUtils.degToRad(33);
   const lp: number[] = [], lc: number[] = [];
-  for (const [x, d] of outline) { lp.push(x + 7.5, 0, -d); lc.push(1, 1, 1); }
-  for (let x = -7.4; x <= 7.4; x += 0.1) { lp.push(x + 7.5, 0, -3.4); lc.push(0.8, 0.8, 0.8); }
-  for (let i = 0; i < 5200; i++) { const x = -7.5 + Math.random() * 15, d = Math.random() * 21.6; if (insideOf(outline, x, d)) { lp.push(x + 7.5, -0.05, -d); lc.push(0.3, 0.3, 0.31); } }
+  for (const [x, d] of outline) { lp.push(x + 7.5, 0, -d); lc.push(...CASE); }
+  for (let x = -7.4; x <= 7.4; x += 0.1) { lp.push(x + 7.5, 0, -3.4); lc.push(...C("#13213a", 0.8)); }
+  for (let i = 0; i < 5200; i++) { const x = -7.5 + Math.random() * 15, d = Math.random() * 21.6; if (insideOf(outline, x, d)) { lp.push(x + 7.5, -0.05, -d); lc.push(...C("#13213a", 0.28)); } }
   const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(lp, 3)); lg.setAttribute("color", new THREE.Float32BufferAttribute(lc, 3));
   lid.add(new THREE.Points(lg, mat(0.15))); root.add(lid);
   const tip = new THREE.Vector3(6.4 + 7.5, 0, -7.6).applyEuler(lid.rotation).add(lid.position);
@@ -275,7 +277,7 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   for (let u = -1; u <= 1.001; u += 0.02) line(desk(u, 0), [u * 4.3, RIM_HI + 0.5, -1.0], 1, CASE);
 
   // fallboard, key slip and the rounded cheek blocks at each end of the keys
-  for (let x = -7.15; x <= 7.15; x += 0.1) for (let y = 7.05; y <= 7.75; y += 0.14) add(x, y, -0.15, y > 7.7 ? CASE : C("#e8e6df", 0.3));
+  for (let x = -7.15; x <= 7.15; x += 0.1) for (let y = 7.05; y <= 7.75; y += 0.14) add(x, y, -0.15, y > 7.7 ? CASE : C("#13213a", 0.3));
   for (let x = -0.5; x <= 0.5; x += 0.06) for (let y = 7.32; y <= 7.48; y += 0.06) add(x, y, -0.1, GOLD);
   for (let x = -7.15; x <= 7.15; x += 0.08) for (let y = 6.35; y <= 6.75; y += 0.1) add(x, y, 1.95, y > 6.7 ? CASE : CASE_DIM);
   for (const sx of [-1, 1]) for (const xo of [7.15, 7.5]) {
@@ -284,7 +286,7 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   }
 
   // floor ring
-  for (let a = 0; a < Math.PI * 2; a += 0.01) add(Math.cos(a) * 18, 0, -9 + Math.sin(a) * 18, C("#ffffff", 0.18));
+  for (let a = 0; a < Math.PI * 2; a += 0.01) add(Math.cos(a) * 18, 0, -9 + Math.sin(a) * 18, C("#13213a", 0.15));
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   root.add(new THREE.Points(g, mat(0.13)));
 
@@ -295,14 +297,14 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
   for (let k = 0; k < 88; k++) { if (isBlack(k)) keyX.push(-7.15 + wi * ww); else { keyX.push(-7.15 + (wi + 0.5) * ww); wi++; } }
   const kp: number[] = [], owner: number[] = [], base: number[][] = [];
   const kadd = (k: number, x: number, y: number, z: number, c: number[]) => { kp.push(x, y, z); owner.push(k); base.push(c); };
-  const IVORY = C("#f4f1e8"), IVORY_SIDE = C("#f4f1e8", 0.45), EBONY = C("#6d7177", 0.55), EBONY_TOP = C("#9aa0a8", 0.8);
+  const IVORY = C("#8a98ad"), IVORY_SIDE = C("#8a98ad", 0.6), EBONY = C("#13213a", 0.8), EBONY_TOP = C("#13213a");
   for (let k = 0; k < 88; k++) {
     const cx = keyX[k];
     if (!isBlack(k)) {
       const half = (ww - 0.035) / 2, nb = [k - 1, k + 1].filter((j) => j >= 0 && j < 88 && isBlack(j)).map((j) => keyX[j]);
       for (let x = -half; x <= half + 1e-6; x += half / 2.5) for (let z = 0; z <= KL + 1e-6; z += 0.075) {
         if (z < BL + 0.04 && nb.some((bx) => Math.abs(cx + x - bx) < BW / 2 + 0.03)) continue;
-        kadd(k, cx + x, 6.9, z, Math.abs(x) > half - 0.01 || z > KL - 0.04 ? IVORY : C("#f4f1e8", 0.82));
+        kadd(k, cx + x, 6.9, z, Math.abs(x) > half - 0.01 || z > KL - 0.04 ? IVORY : C("#8a98ad", 0.7));
       }
       for (let x = -half; x <= half + 1e-6; x += half / 2.5) for (let y = 6.58; y < 6.9; y += 0.08) kadd(k, cx + x, y, KL, IVORY_SIDE);
     } else {
@@ -353,10 +355,10 @@ function pianoScene(THREE: T, scene: THREE_NS.Scene) {
     }
     kg.attributes.position.needsUpdate = true; kg.attributes.color.needsUpdate = true;
     for (let i = 0; i < NN; i++) {
-      if (life[i] <= 0) { nc[i * 3] = nc[i * 3 + 1] = nc[i * 3 + 2] = 0; continue; }
+      if (life[i] <= 0) { np[i * 3 + 1] = -1000; continue; } // parked out of view until the next note
       life[i] -= dt * 0.5; np[i * 3 + 1] += dt * 2.4; np[i * 3] += Math.sin(time * 2 + i) * dt * 0.4;
       const l = Math.max(0, life[i]);
-      nc[i * 3] = accent.r * l; nc[i * 3 + 1] = accent.g * l; nc[i * 3 + 2] = accent.b * l;
+      nc[i * 3] = PAPER.r + (accent.r - PAPER.r) * l; nc[i * 3 + 1] = PAPER.g + (accent.g - PAPER.g) * l; nc[i * 3 + 2] = PAPER.b + (accent.b - PAPER.b) * l;
     }
     ng.attributes.position.needsUpdate = true; ng.attributes.color.needsUpdate = true;
   };
