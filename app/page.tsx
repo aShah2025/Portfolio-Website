@@ -110,7 +110,7 @@ const awards = [
   { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" , code: true },
   { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" , code: true },
   { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" , code: true },
-  { year: "NOW", title: "Driver's License", note: "Working toward it", kind: "IN PROGRESS", href: "#awards" },
+  { year: "NOW", title: "Driver's License", note: "Working toward it", kind: "IN PROGRESS", href: "#drive" },
   { year: "GOAL", title: "Private Pilot Licence", note: "The long-term goal", kind: "IN PROGRESS", href: "#goal" },
   { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#recognition" , code: true },
   { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
