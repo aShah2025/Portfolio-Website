@@ -582,10 +582,9 @@ function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
 }
 
 // High-wing four-seat trainer in the shape of a Cessna 172, in meters with the nose toward -z. Every surface is
-// lofted through cross-sections and painted with vertex colours: dark glazing and an orange cheatline, since
-// shade and colour are all that survive the glyph renderer.
+// lofted through cross-sections and painted with vertex colours: white skin, dark glazing and an orange cheatline.
 function buildPlane(THREE: T) {
-  const BODY = "#7d8ca1", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
+  const BODY = "#f4f5f7", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
   const skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.1 });
   const plain = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
 
@@ -678,7 +677,7 @@ function buildPlane(THREE: T) {
 }
 
 function flightScene(THREE: T, scene: THREE_NS.Scene) {
-  // no sky: the page shows through, and distant ground fades toward paper so it thins into light glyphs
+  // no sky: the page shows through, and distant ground fades into it
   scene.fog = new THREE.Fog("#eef1f5", 140, 520);
   const { plane, prop } = buildPlane(THREE);
   plane.scale.setScalar(0.75); scene.add(plane);
@@ -694,13 +693,13 @@ function flightScene(THREE: T, scene: THREE_NS.Scene) {
     const q = new Int16Array(pb), ty = new Uint8Array(tb), n = ty.length;
     mapLen = meta.length;
     const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-    const palette = [new THREE.Color("#c4cdd8"), new THREE.Color("#aebfd0"), new THREE.Color("#dde3ea")];
+    const palette = [new THREE.Color("#8d9db0"), new THREE.Color("#6f87a6"), new THREE.Color("#b3bfcc")];
     for (let i = 0; i < n; i++) {
       pos[i * 3] = q[i * 3] * 0.25 * U; pos[i * 3 + 1] = q[i * 3 + 1] * 0.1 * U * 1.6; pos[i * 3 + 2] = q[i * 3 + 2] * 0.25 * U;
       const c = palette[ty[i]]; col.set([c.r, c.g, c.b], i * 3);
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    city.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.32, depthWrite: false })));
+    city.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.9 })));
     // marker for Leland High School
     const c = document.createElement("canvas"); c.width = 512; c.height = 128;
     const x = c.getContext("2d")!; x.fillStyle = "#13213a"; x.font = "700 52px Helvetica, Arial, sans-serif"; x.textAlign = "center"; x.fillText("Leland High", 256, 70);
