@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
+import { drive } from "./drive";
+import { engine } from "./engineSound";
 
 const Viewer = dynamic(() => import("./Viewer"), { ssr: false });
 
@@ -231,8 +233,10 @@ function flightHud(p: number, el: HTMLElement) {
 }
 
 function driveHud(p: number, el: HTMLElement) {
+  const d = drive(p);
+  engine.drive(d.t);
   const mph = el.querySelector<HTMLElement>("[data-mph]");
-  if (mph) mph.textContent = String(Math.round(50 * Math.min(1, p / 0.2)));
+  if (mph) mph.textContent = String(Math.round(d.mph));
   el.querySelectorAll<HTMLElement>("[data-cp]").forEach((c) => c.classList.toggle("on", p >= Number(c.dataset.cp)));
   const bar = el.querySelector<HTMLElement>("[data-bar]");
   if (bar) bar.style.transform = `scaleX(${p})`;
@@ -405,6 +409,24 @@ function usePiano() {
   return { player: pianoPlayer, toggle, choose };
 }
 
+// Like the piano: the engine starts when the drive scene is on screen (once the visitor has interacted with the
+// page, which browsers require for audio) and stops when it leaves. Muting by hand keeps it muted.
+function useEngine() {
+  const [, rerender] = useState(0);
+  useEffect(() => {
+    const off = engine.subscribe(() => rerender((n) => n + 1));
+    const el = document.getElementById("drive");
+    const io = el && new IntersectionObserver(([e]) => {
+      const active = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive;
+      if (e.isIntersecting && active) engine.start();
+      if (!e.isIntersecting) engine.stop();
+    }, { threshold: 0.3 });
+    if (el && io) io.observe(el);
+    return () => { off(); io?.disconnect(); engine.stop(); };
+  }, []);
+  return engine;
+}
+
 function PianoProgress() {
   const bar = useRef<HTMLSpanElement>(null), label = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -449,6 +471,7 @@ export default function Home() {
   useScramble();
   const active = useActiveSection();
   const { player, toggle, choose } = usePiano();
+  const motor = useEngine();
   useScrollProgress(progress);
   const macP = usePin(macRef);
   usePin(stRef, statementWords);
@@ -657,6 +680,9 @@ export default function Home() {
             <ol><li data-cp="0.05">Learner&apos;s permit</li><li data-cp="0.5">Practice hours</li><li data-cp="0.8">Road test</li></ol>
             <i><u data-bar /></i>
           </div>
+          <button type="button" className="sound-toggle" aria-pressed={motor.running} onClick={() => (motor.running || motor.muted ? motor.toggle() : motor.start())}>
+            {motor.running ? "❚❚ Engine sound on" : "▶ Engine sound"}
+          </button>
         </div>
       </section>
 

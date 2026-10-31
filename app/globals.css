@@ -337,3 +337,6 @@ button:focus-visible, a:focus-visible { outline: 4px solid var(--lime); outline-
   .project-toggle { grid-column: 3; grid-row: 1; }
 }
 .project-art { --project-color: #c9d3e0; }
+.sound-toggle { position: absolute; left: clamp(22px,4vw,68px); bottom: clamp(26px,5vh,60px); padding: 12px 18px; border: 1px solid var(--line); border-radius: 999px; background: rgba(238,241,245,.8); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 650 .72rem var(--font-geist-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.sound-toggle[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+@media (max-width: 850px) { .sound-toggle { top: 120px; bottom: auto; left: 22px; } }
