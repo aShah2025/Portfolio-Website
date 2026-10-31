@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type * as THREE_NS from "three";
 import { pianoPlayer, type Note } from "./pianoPlayer";
-import { makeGlyphPass } from "./glyphPass";
+import { drive, LAUNCH } from "./drive";
 
 type Scene = "printer" | "wing" | "desk" | "mac" | "flight" | "piano" | "car";
 type Frame = (camera: THREE_NS.PerspectiveCamera, p: number, aspect: number) => void;
@@ -817,7 +817,6 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       el.appendChild(renderer.domElement);
-      const glyph = makeGlyphPass(THREE, renderer);
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
       scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -850,7 +849,7 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const resize = () => {
         const w = el.clientWidth, h = el.clientHeight;
-        if (!w || !h) return; renderer.setSize(w, h, false); glyph.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+        if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
         const f = Math.max(1, 1.15 / camera.aspect);
         camera.position.copy(s.target).addScaledVector(offset, f);
       };
@@ -868,11 +867,11 @@ export default function Viewer({ kind, label, progress }: { kind: Scene; label: 
         s.update(dt, reduce, p);
         if (s.frame) s.frame(camera, p, camera.aspect);
         else { if (reduce) controls.autoRotate = false; controls.update(); }
-        glyph.render(scene, camera, now, reduce);
+        renderer.render(scene, camera);
       };
       raf = requestAnimationFrame(loop);
       cleanup = () => {
-        cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); controls.dispose(); pmrem.dispose(); glyph.dispose();
+        cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); controls.dispose(); pmrem.dispose();
         scene.traverse((o) => { const m = o as THREE_NS.Mesh; if (m.geometry) m.geometry.dispose(); });
         renderer.dispose(); renderer.domElement.remove();
       };
