@@ -584,26 +584,33 @@ function macScene(THREE: T, RoundedBoxGeometry: new (w: number, h: number, d: nu
 // High-wing four-seat trainer in the shape of a Cessna 172, in meters with the nose toward -z. Every surface is
 // lofted through cross-sections and painted with vertex colours: white skin, dark glazing and an orange cheatline.
 function buildPlane(THREE: T) {
-  const BODY = "#f4f5f7", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
-  const skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.1 });
+  const BODY = "#e8ebef", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
+  const skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.15 });
   const plain = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
 
-  // connect rings of equal length into a closed skin with capped ends; paint(ring, point) picks each vertex colour
-  const loft = (rings: THREE_NS.Vector3[][], paint: (p: THREE_NS.Vector3, r: number) => string) => {
-    const n = rings[0].length, pos: number[] = [], col: number[] = [], idx: number[] = [], c = new THREE.Color();
-    rings.forEach((ring, r) => ring.forEach((p) => { pos.push(p.x, p.y, p.z); c.set(paint(p, r)); col.push(c.r, c.g, c.b); }));
+  // connect rings of equal length into a closed skin with capped ends. Normals are smoothed across the skin, but
+  // each face takes one colour from paint(centre) so windows, stripes and tips get crisp edges instead of smearing
+  const loft = (rings: THREE_NS.Vector3[][], paint: (p: THREE_NS.Vector3) => string) => {
+    const n = rings[0].length, pos: number[] = [], idx: number[] = [], c = new THREE.Color();
+    rings.forEach((ring) => ring.forEach((p) => pos.push(p.x, p.y, p.z)));
     for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < n; i++) {
       const a = r * n + i, b = r * n + ((i + 1) % n), d = a + n, e = b + n;
       idx.push(a, d, b, b, d, e);
     }
     for (const [r, flip] of [[0, true], [rings.length - 1, false]] as const) {
       const ctr = rings[r].reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(n), ci = pos.length / 3;
-      pos.push(ctr.x, ctr.y, ctr.z); c.set(paint(ctr, r)); col.push(c.r, c.g, c.b);
+      pos.push(ctr.x, ctr.y, ctr.z);
       for (let i = 0; i < n; i++) { const a = r * n + i, b = r * n + ((i + 1) % n); idx.push(...(flip ? [ci, b, a] : [ci, a, b])); }
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    g.setIndex(idx); g.computeVertexNormals();
+    const smooth = new THREE.BufferGeometry();
+    smooth.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); smooth.setIndex(idx); smooth.computeVertexNormals();
+    const g = smooth.toNonIndexed(), gp = g.attributes.position, col = new Float32Array(gp.count * 3), m3 = new THREE.Vector3();
+    for (let i = 0; i < gp.count; i += 3) {
+      m3.set(0, 0, 0); for (let k = 0; k < 3; k++) m3.add(new THREE.Vector3().fromBufferAttribute(gp, i + k));
+      c.set(paint(m3.divideScalar(3)));
+      for (let k = 0; k < 3; k++) col.set([c.r, c.g, c.b], (i + k) * 3);
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
     const m = new THREE.Mesh(g, skin); m.castShadow = true; return m;
   };
   const rod = (a: number[], b: number[], r: number, m: THREE_NS.Material) => {
@@ -619,13 +626,19 @@ function buildPlane(THREE: T) {
     [-2.1, 0.56, 0.57, 0], [-1.75, 0.57, 0.63, 0.07], [-1.3, 0.58, 0.72, 0.16], [-0.75, 0.58, 0.78, 0.21], [0.55, 0.57, 0.77, 0.2],
     [1.15, 0.5, 0.64, 0.19], [2.0, 0.38, 0.49, 0.19], [3.0, 0.26, 0.35, 0.21], [4.0, 0.16, 0.25, 0.25], [4.72, 0.07, 0.15, 0.3],
   ];
-  const SEG = 40;
-  const fuseRings = stations.map(([z, w, h, cy]) => Array.from({ length: SEG }, (_, k) => {
+  const SEG = 64;
+  const lerpStation = (z: number) => {
+    let i = 0; while (i < stations.length - 2 && stations[i + 1][0] < z) i++;
+    const [z0, ...a] = stations[i], [z1, ...b] = stations[i + 1], t = Math.min(1, Math.max(0, (z - z0) / (z1 - z0))), e = t * t * (3 - 2 * t);
+    return [z, ...a.map((v, k) => v + (b[k] - v) * (k < 2 ? e : t))] as [number, number, number, number];
+  };
+  const fine = Array.from({ length: 120 }, (_, i) => lerpStation(stations[0][0] + (i / 119) * (stations[stations.length - 1][0] - stations[0][0])));
+  const fuseRings = fine.map(([z, w, h, cy]) => Array.from({ length: SEG }, (_, k) => {
     const a = (k / SEG) * TAU, cs = Math.cos(a), sn = Math.sin(a), e = 2 / 2.7;
     return new THREE.Vector3(w * Math.sign(cs) * Math.abs(cs) ** e, cy + h * Math.sign(sn) * Math.abs(sn) ** e, z);
   }));
-  plane.add(loft(fuseRings, (p, r) => {
-    const [, , h, cy] = stations[Math.min(r, stations.length - 1)], up = (p.y - cy) / h;
+  plane.add(loft(fuseRings, (p) => {
+    const [, , h, cy] = lerpStation(p.z), up = (p.y - cy) / h;
     if (p.z < -2.82) return METAL; // spinner
     const windshield = p.z > -1.8 && p.z < -0.75 && up > 0.35;
     const side = p.z > -0.75 && p.z < 1.25 && up > 0.3 && up < 0.88 && Math.abs(p.x) > 0.25;
@@ -637,11 +650,11 @@ function buildPlane(THREE: T) {
   // wing: NACA 2412 sections, constant chord inboard then tapering, 1.7° dihedral, on top of the cabin
   const foil = naca(0.12, 0.02, 0.4, 24);
   const wingRing = (x: number, chord: number, zLE: number, y: number, t = 1) => foil.map(([u, v]) => new THREE.Vector3(x, y + v * chord * t, zLE + u * chord));
-  const wingSpan = [-5.5, -5.35, -2.6, 0, 2.6, 5.35, 5.5];
+  const wingSpan = [-5.5, -5.35, ...Array.from({ length: 43 }, (_, i) => -5.25 + i * 0.25), 5.35, 5.5];
   plane.add(loft(wingSpan.map((x) => {
     const ax = Math.abs(x), chord = ax <= 2.6 ? 1.62 : 1.62 - (ax - 2.6) * 0.17, zLE = -1.05 + (1.62 - chord) * 0.25;
     return wingRing(x, ax > 5.4 ? chord * 0.8 : chord, zLE, 0.98 + ax * 0.03, ax > 5.4 ? 0.5 : 1);
-  }), (p) => (Math.abs(p.x) > 5.0 ? ORANGE : BODY)));
+  }), (p) => (Math.abs(p.x) > 4.85 ? ORANGE : BODY)));
 
   // tail: tapered horizontal stabiliser and a swept fin with an orange cap
   const tfoil = naca(0.09, 0, 0, 16);
@@ -649,7 +662,7 @@ function buildPlane(THREE: T) {
     const chord = Math.abs(x) < 1 ? 0.85 : 0.55;
     return tfoil.map(([u, v]) => new THREE.Vector3(x, 0.32 + v * chord, 4.0 + (0.85 - chord) * 0.6 + u * chord));
   }), () => BODY));
-  const finY = [0.3, 0.9, 1.4, 1.62, 1.75];
+  const finY = [0.3, 0.6, 0.9, 1.15, 1.4, 1.5, 1.62, 1.75];
   plane.add(loft(finY.map((y) => {
     const k = (y - 0.3) / 1.45, chord = 1.25 - k * 0.68, zLE = 3.45 + k * 1.0;
     return tfoil.map(([u, v]) => new THREE.Vector3(v * chord, y, zLE + u * chord));
@@ -666,13 +679,11 @@ function buildPlane(THREE: T) {
   plane.add(rod([0, -0.45, -2.35], [0, -1.2, -2.4], 0.04, metal));
   const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 18), tyre); nose.rotation.z = Math.PI / 2; nose.position.set(0, -1.25, -2.4); plane.add(nose);
 
-  // two-blade prop with a faint blur disc
+  // two-blade prop
   const prop = new THREE.Group(); prop.position.z = -3.05; plane.add(prop);
   for (const s of [-1, 1]) {
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.9, 0.03), plain(DARK)); blade.position.y = s * 0.5; blade.rotation.y = s * 0.35; prop.add(blade);
   }
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.98, 40), new THREE.MeshBasicMaterial({ color: "#8796aa", transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }));
-  disc.position.z = -3.07; plane.add(disc);
   return { plane, prop };
 }
 
@@ -735,21 +746,21 @@ type GLTFLoaderT = { loadAsync: (url: string) => Promise<{ scene: THREE_NS.Group
 
 // Mercedes-AMG GT R on an open two-lane road. While it idles the camera circles from a low front three-quarter
 // to the side profile; then it launches and pulls away down the road, with the camera following at a distance
-// it can't hold. Paint is reassigned by material name: deep navy metallic, orange calipers and tail lights.
+// it can't hold. Paint is reassigned by material name: Green Hell magno satin green, yellow calipers, red tail lights.
 function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
   scene.fog = new THREE.Fog("#eef1f5", 40, 190);
   const car = new THREE.Group(); scene.add(car);
   const wheels: THREE_NS.Object3D[] = [];
   const material = (name: string): THREE_NS.Material => {
-    if (/Red\.002/.test(name)) return new THREE.MeshStandardMaterial({ color: "#ff5a36", roughness: 0.4 });
+    if (/Red\.002/.test(name)) return new THREE.MeshStandardMaterial({ color: "#f2c230", roughness: 0.4 }); // yellow ceramic-brake calipers
     if (/Glass - Red/.test(name)) return new THREE.MeshStandardMaterial({ color: "#ff3b1f", emissive: "#ff3b1f", emissiveIntensity: 0.6, roughness: 0.2 });
     if (/Glass - Clear/.test(name)) return new THREE.MeshStandardMaterial({ color: "#e8edf3", roughness: 0.05, metalness: 0.3 });
     if (/Glass|Window/.test(name)) return new THREE.MeshStandardMaterial({ color: "#0d1420", roughness: 0.05, metalness: 0.9 });
     if (/Tire|Rubber/.test(name)) return new THREE.MeshStandardMaterial({ color: "#16181c", roughness: 0.9 });
     if (/Interior|Plastic|Material\.001/.test(name)) return new THREE.MeshStandardMaterial({ color: "#1a1d22", roughness: 0.8 });
     if (/Chrome|Brake Disc|logo/.test(name)) return new THREE.MeshStandardMaterial({ color: "#d9dde3", roughness: 0.18, metalness: 1 });
-    if (/Car Paint - Black|Metal - Black/.test(name)) return new THREE.MeshPhysicalMaterial({ color: "#16191f", roughness: 0.35, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 });
-    return new THREE.MeshPhysicalMaterial({ color: "#1f2d47", roughness: 0.32, metalness: 0.65, clearcoat: 1, clearcoatRoughness: 0.05 });
+    if (/Car Paint - Black|Metal - Black/.test(name)) return new THREE.MeshStandardMaterial({ color: "#16191f", roughness: 0.45, metalness: 0.3 });
+    return new THREE.MeshPhysicalMaterial({ color: "#5b7354", roughness: 0.5, metalness: 0.25, clearcoat: 0.25, clearcoatRoughness: 0.4 }); // AMG Green Hell magno, a satin finish
   };
   loader.loadAsync("/models/amg-gtr.glb").then(({ scene: model }) => {
     model.traverse((o) => {
@@ -764,24 +775,27 @@ function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
     const fz = front ? new THREE.Box3().setFromObject(front).getCenter(new THREE.Vector3()).z : -1;
     if (fz > 0) { model.rotation.y = Math.PI; model.updateMatrixWorld(true); }
     car.add(model);
-    // re-pivot each rotating wheel part on its own axle so it can roll
-    for (const n of ["FT-L001", "FT-R001", "BK-L001", "BK-R001", "FT-D-L001", "FT-D-R001", "BK-D-L001", "BK-D-R001"]) {
-      const part = model.getObjectByName(n);
-      if (!part) continue;
-      const pivot = new THREE.Group(); pivot.position.copy(new THREE.Box3().setFromObject(part).getCenter(new THREE.Vector3()));
-      car.add(pivot); pivot.attach(part); wheels.push(pivot);
+    // each wheel is several nodes sharing a name (tyre, rim, centre lock, disc); gather them all per corner
+    const parts = (corner: string) => { const out: THREE_NS.Object3D[] = []; model.traverse((o) => { if (o.name === `${corner}001` || o.name === corner.replace("-", "-D-") + "001") out.push(o); }); return out; };
+    for (const corner of ["FT-L", "FT-R", "BK-L", "BK-R"]) {
+      const group = parts(corner);
+      if (!group.length) continue;
+      const box = new THREE.Box3(); for (const o of group) box.expandByObject(o);
+      const centre = box.getCenter(new THREE.Vector3());
+      // the source model's front wheels are about twice as wide as the rears and bulge out of the arches; bring them to a 275 mm tyre
+      if (corner.startsWith("FT")) for (const o of group) { o.scale.x *= 0.5; o.position.x = centre.x + (o.position.x - centre.x) * 0.5; }
+      const pivot = new THREE.Group(); pivot.position.copy(centre);
+      car.add(pivot); for (const o of group) pivot.attach(o); wheels.push(pivot);
     }
   }).catch(() => {});
 
-  // road: surface, edge lines, dashed centre line and posts on the shoulder, long enough for the whole run
+  // road: asphalt, white edge lines and a dashed centre line, long enough for the whole run
   const ROAD = 360, mid = -ROAD / 2 + 40;
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.6, ROAD), new THREE.MeshStandardMaterial({ color: "#d3d9e1", roughness: 0.95 }));
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.6, ROAD), new THREE.MeshStandardMaterial({ color: "#8b939e", roughness: 0.95 }));
   road.rotation.x = -Math.PI / 2; road.position.set(-1.8, 0, mid); road.receiveShadow = true; scene.add(road);
-  const ink = new THREE.MeshStandardMaterial({ color: "#13213a", roughness: 0.8 });
+  const ink = new THREE.MeshStandardMaterial({ color: "#f4f5f7", roughness: 0.8 });
   for (const x of [1.95, -5.55]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.16, ROAD), ink); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.01, mid); scene.add(l); }
   for (let z = 40; z > 40 - ROAD; z -= 9) { const d = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 3), ink); d.rotation.x = -Math.PI / 2; d.position.set(-1.8, 0.01, z); scene.add(d); }
-  const postMat = new THREE.MeshStandardMaterial({ color: "#5b6b82", roughness: 0.6 });
-  for (let z = 36; z > 40 - ROAD; z -= 18) for (const x of [3.3, -6.9]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), postMat); p.position.set(x, 0.5, z); p.castShadow = true; scene.add(p); }
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.18 }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.005; ground.receiveShadow = true; scene.add(ground);
 
