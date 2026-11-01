@@ -782,10 +782,12 @@ function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
       if (!group.length) continue;
       const box = new THREE.Box3(); for (const o of group) box.expandByObject(o);
       const centre = box.getCenter(new THREE.Vector3());
-      // the source model's front wheels are about twice as wide as the rears and bulge out of the arches; bring them to a 275 mm tyre
-      if (corner.startsWith("FT")) for (const o of group) { o.scale.x *= 0.5; o.position.x = centre.x + (o.position.x - centre.x) * 0.5; }
-      const pivot = new THREE.Group(); pivot.position.copy(centre);
-      car.add(pivot); for (const o of group) pivot.attach(o); wheels.push(pivot);
+      // the pivot rolls about the axle; inside it, the source model's front wheels are baked in at 34.5° of steering
+      // lock, which made them jut out of the arches, so they're turned back straight
+      const pivot = new THREE.Group(), straight = new THREE.Group(); pivot.position.copy(centre);
+      car.add(pivot); pivot.add(straight); for (const o of group) straight.attach(o);
+      if (corner.startsWith("FT")) straight.rotation.y = THREE.MathUtils.degToRad(34.5);
+      wheels.push(pivot);
     }
   }).catch(() => {});
 
