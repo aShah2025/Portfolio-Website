@@ -766,8 +766,11 @@ function carScene(THREE: T, scene: THREE_NS.Scene, loader: GLTFLoaderT) {
     model.traverse((o) => {
       const m = o as THREE_NS.Mesh;
       if (!m.isMesh) return;
-      m.material = material((m.material as THREE_NS.Material).name);
+      const name = (m.material as THREE_NS.Material).name;
+      m.material = material(name);
       m.castShadow = true;
+      // the compressed model stores normals at 8-bit precision, which ripples the big painted panels; rebuild them
+      if (/Car Paint/.test(name)) { m.geometry = m.geometry.clone(); m.geometry.deleteAttribute("normal"); m.geometry.computeVertexNormals(); }
     });
     model.updateMatrixWorld(true);
     // face the nose down -z, the way the road runs
