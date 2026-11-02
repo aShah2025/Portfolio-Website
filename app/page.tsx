@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
-import { drive } from "./drive";
-import { engine } from "./engineSound";
 
 const Viewer = dynamic(() => import("./Viewer"), { ssr: false });
 
@@ -113,8 +111,6 @@ const awards = [
   { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" , code: true },
   { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" , code: true },
   { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" , code: true },
-  { year: "NOW", title: "Driver's License", note: "Working toward it", kind: "IN PROGRESS", href: "#drive" },
-  { year: "GOAL", title: "Private Pilot Licence", note: "The long-term goal", kind: "IN PROGRESS", href: "#goal" },
   { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#recognition" , code: true },
   { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
   { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE", href: "#awards" },
@@ -215,31 +211,6 @@ function usePin(ref: React.RefObject<HTMLElement | null>, onP?: (p: number, el: 
     return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); if (raf) cancelAnimationFrame(raf); };
   }, [ref]);
   return prog;
-}
-
-const alt01 = (p: number) => {
-  const sm = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  return sm(0.14, 0.4, p) * (1 - sm(0.72, 0.94, p));
-};
-
-function flightHud(p: number, el: HTMLElement) {
-  const alt = el.querySelector<HTMLElement>("[data-alt]");
-  if (alt) alt.textContent = Math.round(alt01(p) * 3500).toLocaleString("en-US");
-  const hdg = el.querySelector<HTMLElement>("[data-hdg]");
-  if (hdg) hdg.textContent = String(Math.round(((270 + Math.sin(p * 5) * 25 + p * 20) % 360 + 360) % 360)).padStart(3, "0");
-  el.querySelectorAll<HTMLElement>("[data-cp]").forEach((c) => c.classList.toggle("on", p >= Number(c.dataset.cp)));
-  const bar = el.querySelector<HTMLElement>("[data-bar]");
-  if (bar) bar.style.transform = `scaleX(${p})`;
-}
-
-function driveHud(p: number, el: HTMLElement) {
-  const d = drive(p);
-  engine.drive(d.t);
-  const mph = el.querySelector<HTMLElement>("[data-mph]");
-  if (mph) mph.textContent = String(Math.round(d.mph));
-  el.querySelectorAll<HTMLElement>("[data-cp]").forEach((c) => c.classList.toggle("on", p >= Number(c.dataset.cp)));
-  const bar = el.querySelector<HTMLElement>("[data-bar]");
-  if (bar) bar.style.transform = `scaleX(${p})`;
 }
 
 function statementWords(p: number, el: HTMLElement) {
@@ -382,7 +353,7 @@ function Art({ id }: { id: string }) {
   }
 }
 
-const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"], ["drive", "Drive"], ["goal", "Goal"]];
+const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"]];
 
 // The piano starts sounding when its section scrolls into view (once the visitor has interacted with the page,
 // which browsers require for audio) and pauses when it leaves. Pausing it by hand keeps it paused.
@@ -407,24 +378,6 @@ function usePiano() {
   };
   const choose = (id: string) => { userPaused.current = false; pianoPlayer.play(id, 0); };
   return { player: pianoPlayer, toggle, choose };
-}
-
-// Like the piano: the engine starts when the drive scene is on screen (once the visitor has interacted with the
-// page, which browsers require for audio) and stops when it leaves. Muting by hand keeps it muted.
-function useEngine() {
-  const [, rerender] = useState(0);
-  useEffect(() => {
-    const off = engine.subscribe(() => rerender((n) => n + 1));
-    const el = document.getElementById("drive");
-    const io = el && new IntersectionObserver(([e]) => {
-      const active = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive;
-      if (e.isIntersecting && active) engine.start();
-      if (!e.isIntersecting) engine.stop();
-    }, { threshold: 0.3 });
-    if (el && io) io.observe(el);
-    return () => { off(); io?.disconnect(); engine.stop(); };
-  }, []);
-  return engine;
 }
 
 function PianoProgress() {
@@ -465,18 +418,13 @@ export default function Home() {
   const nav = useRef<HTMLElement>(null);
   const macRef = useRef<HTMLElement>(null);
   const stRef = useRef<HTMLElement>(null);
-  const driveRef = useRef<HTMLElement>(null);
-  const flightRef = useRef<HTMLElement>(null);
   useReveal();
   useScramble();
   const active = useActiveSection();
   const { player, toggle, choose } = usePiano();
-  const motor = useEngine();
   useScrollProgress(progress);
   const macP = usePin(macRef);
   usePin(stRef, statementWords);
-  const driveP = usePin(driveRef, driveHud);
-  const flightP = usePin(flightRef, flightHud);
   useEffect(() => {
     const on = () => nav.current?.classList.toggle("scrolled", window.scrollY > 60);
     on();
@@ -520,7 +468,7 @@ export default function Home() {
 
       <section className="statement" ref={stRef}>
         <div className="pin-sticky">
-          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. I play piano. And I'm working toward my driver's licence, then my pilot's licence.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
+          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. I play piano.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
         </div>
       </section>
 
@@ -664,45 +612,6 @@ export default function Home() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="pin pin-drive" id="drive" ref={driveRef} aria-label="Scroll story: working toward a driver's licence">
-        <div className="pin-sticky">
-          <Viewer kind="car" progress={driveP} label="3D Mercedes-AMG GT R driving down an open road as you scroll" />
-          <div className="pin-text">
-            <p className="stage kicker" data-in="-0.1" data-out="0.22"><small>08 / NEXT UP</small>Driver&apos;s licence.</p>
-            <p className="stage" data-in="0.26" data-out="0.48">Learner&apos;s permit first.</p>
-            <p className="stage" data-in="0.52" data-out="0.74">Then the hours behind the wheel.</p>
-            <p className="stage" data-in="0.78" data-out="1.1">Then the road test.</p>
-          </div>
-          <div className="hud" aria-hidden="true">
-            <div><span>SPD</span><b data-mph>0</b><span>MPH</span></div>
-            <ol><li data-cp="0.05">Learner&apos;s permit</li><li data-cp="0.5">Practice hours</li><li data-cp="0.8">Road test</li></ol>
-            <i><u data-bar /></i>
-          </div>
-          <button type="button" className="sound-toggle" aria-pressed={motor.running} onClick={() => (motor.running || motor.muted ? motor.toggle() : motor.start())}>
-            {motor.running ? "❚❚ Engine sound on" : "▶ Engine sound"}
-          </button>
-        </div>
-      </section>
-
-      <section className="pin pin-flight" id="goal" ref={flightRef} aria-label="Scroll story: working toward a private pilot licence">
-        <div className="pin-sticky">
-          <Viewer kind="flight" progress={flightP} label="3D single-engine airplane flying over terrain as you scroll" />
-          <div className="pin-text">
-            <p className="stage kicker" data-in="-0.1" data-out="0.2"><small>09 / THE GOAL</small>Private pilot licence.</p>
-            <p className="stage" data-in="0.24" data-out="0.46">Ground school first.</p>
-            <p className="stage" data-in="0.5" data-out="0.72">Then the first solo.</p>
-            <p className="stage" data-in="0.76" data-out="1.1">Then the checkride.</p>
-          </div>
-          <p className="credit">Map: © OpenStreetMap contributors (ODbL), AWS Terrain Tiles</p>
-          <div className="hud" aria-hidden="true">
-            <div><span>ALT</span><b data-alt>0</b><span>FT</span></div>
-            <div><span>HDG</span><b data-hdg>270</b></div>
-            <ol><li data-cp="0.05">Ground school</li><li data-cp="0.45">First solo</li><li data-cp="0.8">Checkride</li></ol>
-            <i><u data-bar /></i>
-          </div>
-        </div>
       </section>
 
       <footer className="footer">
