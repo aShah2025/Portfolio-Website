@@ -62,7 +62,8 @@ export const pianoPlayer = {
     return true;
   },
 
-  async play(id = this.piece.id, from = 0) {
+  async play(id?: string, from = 0) {
+    if (id === undefined) id = this.piece.id;
     this.stop();
     if (id !== this.piece.id || !this.notes.length) await this.load(id);
     this.playing = true; this.emit();
