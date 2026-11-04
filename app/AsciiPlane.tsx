@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type * as THREE_NS from "three";
+import { SCENES } from "./asciiScenes";
 
 type T = typeof THREE_NS;
 const TAU = Math.PI * 2;
@@ -35,11 +36,12 @@ function naca(t: number, m: number, p: number, n: number) {
 }
 
 
-// High-wing four-seat trainer in the shape of a Cessna 172, in meters with the nose toward -z. Every surface is
-// lofted through cross-sections and painted with vertex colours: white skin, dark glazing and an orange cheatline.
+// High-wing four-seat trainer modelled on the Cessna 172S, in meters with the nose toward -z. Every surface is
+// lofted through cross-sections and painted with vertex colours in the 172's factory scheme: gloss white with a
+// red swoosh that sweeps up the tail, a thin maroon pinstripe, tinted glazing, and control-surface seams.
 function buildPlane(THREE: T) {
-  const BODY = "#e8ebef", DARK = "#1c2a44", ORANGE = "#ff5a36", METAL = "#4b5a70";
-  const skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.15 });
+  const BODY = "#eef0f3", DARK = "#1c2a44", RED = "#c8322f", MAROON = "#6e1f2b", SEAM = "#aeb5bf", METAL = "#4b5a70";
+  const skin = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.15 });
   const plain = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
 
   // connect rings of equal length into a closed skin with capped ends. Normals are smoothed across the skin, but
@@ -86,18 +88,27 @@ function buildPlane(THREE: T) {
     const [z0, ...a] = stations[i], [z1, ...b] = stations[i + 1], t = Math.min(1, Math.max(0, (z - z0) / (z1 - z0))), e = t * t * (3 - 2 * t);
     return [z, ...a.map((v, k) => v + (b[k] - v) * (k < 2 ? e : t))] as [number, number, number, number];
   };
-  const fine = Array.from({ length: 120 }, (_, i) => lerpStation(stations[0][0] + (i / 119) * (stations[stations.length - 1][0] - stations[0][0])));
+  const fine = Array.from({ length: 240 }, (_, i) => lerpStation(stations[0][0] + (i / 239) * (stations[stations.length - 1][0] - stations[0][0])));
   const fuseRings = fine.map(([z, w, h, cy]) => Array.from({ length: SEG }, (_, k) => {
     const a = (k / SEG) * TAU, cs = Math.cos(a), sn = Math.sin(a), e = 2 / 2.7;
     return new THREE.Vector3(w * Math.sign(cs) * Math.abs(cs) ** e, cy + h * Math.sign(sn) * Math.abs(sn) ** e, z);
   }));
+  // the swoosh: low along the cowling, rising under the windows and up the tail cone toward the fin
+  const swoosh = (z: number) => -0.2 + 0.55 * smooth(-1.5, 4.4, z);
   plane.add(loft(fuseRings, (p) => {
-    const [, , h, cy] = lerpStation(p.z), up = (p.y - cy) / h;
-    if (p.z < -2.82) return METAL; // spinner
+    const [, w, h, cy] = lerpStation(p.z), up = (p.y - cy) / h, side = Math.abs(p.x) > w * 0.55;
+    if (p.z < -2.82) return "#d9dde3"; // spinner
+    if (p.z < -2.68 && side && up > -0.4 && up < -0.05) return DARK; // cowling air intakes
     const windshield = p.z > -1.8 && p.z < -0.75 && up > 0.35;
-    const side = p.z > -0.75 && p.z < 1.25 && up > 0.3 && up < 0.88 && Math.abs(p.x) > 0.25;
-    if (windshield || side) return DARK;
-    if (p.z < 3.6 && up > -0.2 && up < -0.04) return ORANGE; // cheatline
+    const door = p.z > -0.72 && p.z < 0.32 && up > 0.3 && up < 0.88 && side;
+    const rearSide = p.z > 0.42 && p.z < 1.25 && up > 0.32 && up - (p.z - 0.42) * 0.25 < 0.86 && side;
+    const rearWindow = p.z > 1.3 && p.z < 2.0 && up > 0.5;
+    if (windshield || door || rearSide || rearWindow) return DARK;
+    if (p.z > -0.74 && p.z < -0.7 && up < 0.3 && side) return SEAM; // door seams
+    if (p.z > 0.34 && p.z < 0.38 && up < 0.3 && side) return SEAM;
+    const sw = swoosh(p.z);
+    if (up > sw && up < sw + 0.13) return RED;
+    if (up > sw - 0.08 && up < sw - 0.04) return MAROON;
     return BODY;
   }));
 
@@ -108,19 +119,49 @@ function buildPlane(THREE: T) {
   plane.add(loft(wingSpan.map((x) => {
     const ax = Math.abs(x), chord = ax <= 2.6 ? 1.62 : 1.62 - (ax - 2.6) * 0.17, zLE = -1.05 + (1.62 - chord) * 0.25;
     return wingRing(x, ax > 5.4 ? chord * 0.8 : chord, zLE, 0.98 + ax * 0.03, ax > 5.4 ? 0.5 : 1);
-  }), (p) => (Math.abs(p.x) > 4.85 ? ORANGE : BODY)));
+  }), (p) => {
+    // ailerons outboard and flaps inboard both hinge at about three quarters of the chord
+    const ax = Math.abs(p.x), chord = ax <= 2.6 ? 1.62 : 1.62 - (ax - 2.6) * 0.17, u = (p.z - (-1.05 + (1.62 - chord) * 0.25)) / chord;
+    if (ax > 0.6 && ax < 5.2 && u > 0.72 && u < 0.745) return SEAM;
+    if (ax > 3.05 && ax < 3.1 && u > 0.72) return SEAM; // flap / aileron split
+    return BODY;
+  }));
+  // wingtip navigation lights: red on the left, green on the right
+  for (const [x, col] of [[-5.52, "#ff2a2a"], [5.52, "#2aff6a"]] as const) {
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshBasicMaterial({ color: col })); l.position.set(x, 1.15, -0.85); plane.add(l);
+  }
 
-  // tail: tapered horizontal stabiliser and a swept fin with an orange cap
+  // tail: tapered horizontal stabiliser with an elevator seam, a swept fin carrying the swoosh, and the dorsal
+  // fillet that runs forward from the fin along the top of the tail cone
   const tfoil = naca(0.09, 0, 0, 16);
   plane.add(loft([-1.75, -0.2, 0.2, 1.75].map((x) => {
     const chord = Math.abs(x) < 1 ? 0.85 : 0.55;
     return tfoil.map(([u, v]) => new THREE.Vector3(x, 0.32 + v * chord, 4.0 + (0.85 - chord) * 0.6 + u * chord));
-  }), () => BODY));
+  }), (p) => (p.z > 4.42 && p.z < 4.46 && Math.abs(p.x) > 0.2 ? SEAM : BODY)));
   const finY = [0.3, 0.6, 0.9, 1.15, 1.4, 1.5, 1.62, 1.75];
   plane.add(loft(finY.map((y) => {
     const k = (y - 0.3) / 1.45, chord = 1.25 - k * 0.68, zLE = 3.45 + k * 1.0;
     return tfoil.map(([u, v]) => new THREE.Vector3(v * chord, y, zLE + u * chord));
-  }), (p) => (p.y > 1.5 ? ORANGE : BODY)));
+  }), (p) => {
+    const band = 0.62 + (p.z - 3.6) * 0.3;
+    if (p.y > band && p.y < band + 0.16) return RED;
+    if (p.y > band - 0.1 && p.y < band - 0.06) return MAROON;
+    return BODY;
+  }));
+  const fillet = Array.from({ length: 14 }, (_, i) => {
+    const z = 2.3 + (i / 13) * 1.3, [, , h, cy] = lerpStation(z), top = cy + h - 0.02, rise = 0.55 * smooth(2.3, 3.6, z) + 0.01;
+    return Array.from({ length: 16 }, (_, k) => { const a = (k / 16) * TAU, sn = Math.sin(a); return new THREE.Vector3(0.05 * Math.cos(a), top + (sn > 0 ? sn * rise : sn * 0.03), z); });
+  });
+  plane.add(loft(fillet, () => BODY));
+
+  // registration on both sides of the tail cone, angled to follow its taper
+  const reg = document.createElement("canvas"); reg.width = 512; reg.height = 96;
+  const rc = reg.getContext("2d")!; rc.fillStyle = DARK; rc.font = "italic 700 78px Arial, sans-serif"; rc.textBaseline = "middle"; rc.fillText("N172AS", 8, 50);
+  const regTex = new THREE.CanvasTexture(reg); regTex.colorSpace = THREE.SRGBColorSpace;
+  for (const s of [-1, 1]) {
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.18), new THREE.MeshBasicMaterial({ map: regTex, transparent: true, polygonOffset: true, polygonOffsetFactor: -4 }));
+    decal.position.set(s * 0.335, 0.16, 2.5); decal.rotation.y = s * (Math.PI / 2 - 0.12); plane.add(decal);
+  }
 
   // struts, fixed tricycle gear with wheel fairings
   const metal = plain(METAL), tyre = plain(DARK);
@@ -133,11 +174,14 @@ function buildPlane(THREE: T) {
   plane.add(rod([0, -0.45, -2.35], [0, -1.2, -2.4], 0.04, metal));
   const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 18), tyre); nose.rotation.z = Math.PI / 2; nose.position.set(0, -1.25, -2.4); plane.add(nose);
 
-  // two-blade prop
+  // two-blade prop with painted tips, plus the faint disc a spinning prop leaves in a photo
   const prop = new THREE.Group(); prop.position.z = -3.05; plane.add(prop);
   for (const s of [-1, 1]) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.9, 0.03), plain(DARK)); blade.position.y = s * 0.5; blade.rotation.y = s * 0.35; prop.add(blade);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.86, 0.03), plain(DARK)); blade.position.y = s * 0.5; blade.rotation.y = s * 0.35; prop.add(blade);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.08, 0.031), plain("#e8e2d0")); tip.position.y = s * 0.95; tip.rotation.y = s * 0.35; prop.add(tip);
   }
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.98, 48), new THREE.MeshBasicMaterial({ color: "#3a4150", transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+  disc.position.z = -3.06; plane.add(disc);
   return { plane, prop };
 }
 
@@ -179,8 +223,8 @@ type Cell = [number, number, string];
 // The plane is rendered by three.js into a tiny offscreen target, one pixel per character cell, then read back
 // and redrawn as glyphs: shading picks the glyph, paint picks the colour. Clouds and wind streaks fill the sky.
 // The intro opens as a full-colour painting of the plane at sunset that breaks apart into ASCII as you scroll;
-// after the intro the plane sits to the right of the content.
-export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
+// after the intro the plane sits to the right of the content, and opening a row swaps it for that row's scene.
+export default function AsciiPlane({ stunt, focus }: { stunt: { current: number }; focus: { current: string | null } }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -199,7 +243,10 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
       gl.setPixelRatio(1);
       const rt = new THREE.WebGLRenderTarget(1, 1);
       const scene = new THREE.Scene();
-      scene.add(new THREE.HemisphereLight("#fff4e6", "#b89a8c", 1.3));
+      const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
+      scene.environment = new THREE.PMREMGenerator(gl).fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 0.45;
+      scene.add(new THREE.HemisphereLight("#fff4e6", "#b89a8c", 0.9));
       const sun = new THREE.DirectionalLight("#ffe2c0", 2.6); sun.position.set(-6, 7, 5); scene.add(sun);
       const { plane, prop } = buildPlane(THREE);
       const rig = new THREE.Group(); rig.add(plane); scene.add(rig);
@@ -208,6 +255,8 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
 
       let W = 0, H = 0, cw = 7, ch = 13, cols = 0, rows = 0, dpr = 1, font = "";
       let buf = new Uint8Array(0), born: Float32Array = new Float32Array(0);
+      const scene2d = document.createElement("canvas"), sc2 = scene2d.getContext("2d", { willReadFrequently: true })!;
+      let scenePx = new Uint8ClampedArray(0), shown = 0, sceneId = "";
       let sky = document.createElement("canvas"), skyLum = new Float32Array(0), skyWarm = new Uint8Array(0);
       let colors = { ink: "#1b2433", plane: "#2f5d9b", accent: "#ff5a36", muted: "#9aa3b1" };
       const readColors = () => {
@@ -224,6 +273,7 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
         cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
         rt.setSize(cols, rows); buf = new Uint8Array(cols * rows * 4);
         gl.setSize(W, H, false);
+        scene2d.width = cols; scene2d.height = rows;
         camera.aspect = (cols * cw) / (rows * ch); camera.updateProjectionMatrix();
         born = new Float32Array(cols * rows).map((_, i) => hash(i % cols, (i / cols) | 0));
         // the painting, and its brightness and warmth sampled once per character cell for the ASCII version
@@ -271,6 +321,19 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
         plane.rotateZ(roll);
         prop.rotation.z += dt * 40;
 
+        // the open row's scene fades in where the plane was; the plane fades out while it shows
+        const want = focus.current && SCENES[focus.current] ? focus.current : "";
+        if (want) sceneId = want;
+        shown += ((want ? 1 : 0) - shown) * Math.min(1, dt * 5);
+        if (shown > 0.01 && sceneId) {
+          sc2.setTransform(1, 0, 0, 1, 0, 0); sc2.fillStyle = "#000"; sc2.fillRect(0, 0, cols, rows);
+          sc2.setTransform(cols / W, 0, 0, rows / H, 0, 0);
+          const bx = wide ? Math.max(500, W * 0.45) : W * 0.08, bw = (wide ? W * 0.94 : W * 0.92) - bx;
+          const by = wide ? H * 0.2 : H * 0.06, bh = Math.min(wide ? H * 0.6 : H * 0.3, bw * 0.8);
+          SCENES[sceneId](sc2, bx, by, bw, bh, time);
+          scenePx = sc2.getImageData(0, 0, cols, rows).data;
+        }
+
         gl.setClearColor(0x000000, 0);
         gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
         gl.readRenderTargetPixels(rt, 0, 0, cols, rows, buf);
@@ -286,12 +349,16 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
         }
 
         const inkCells: Cell[] = [], planeCells: Cell[] = [], accentCells: Cell[] = [], skyCells: Cell[] = [];
-        const coolArt: Cell[] = [], warmArt: Cell[] = [];
+        const coolArt: Cell[] = [], warmArt: Cell[] = [], coolScene: Cell[] = [], warmScene: Cell[] = [];
         for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
           const i = r * cols + c, o = ((rows - 1 - r) * cols + c) * 4;
           const x = c * cw, y = r * ch;
           // while the painting is fading out, cells flicker through random glyphs before settling
           const settling = d < 1 && born[i] > d;
+          if (shown > 0.01) {
+            const R = scenePx[i * 4], G = scenePx[i * 4 + 1], B = scenePx[i * 4 + 2], lum = Math.max(R, G, B) / 255;
+            if (lum > 0.12) (R > B ? warmScene : coolScene).push([x, y, RAMP[Math.floor((1 - lum) * (RAMP.length - 1))]]);
+          }
           if (buf[o + 3] > 40) {
             const R = buf[o], G = buf[o + 1], B = buf[o + 2], lum = (0.3 * R + 0.59 * G + 0.11 * B) / 255;
             const g = settling ? SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0] : RAMP[Math.min(RAMP.length - 1, Math.max(0, Math.floor((1 - Math.min(1, lum * 1.15)) * RAMP.length)))];
@@ -320,13 +387,15 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
 
         ctx.font = font; ctx.textBaseline = "top";
         const draw = (cells: Cell[], color: string, alpha: number) => { if (alpha <= 0) return; ctx.globalAlpha = alpha; ctx.fillStyle = color; for (const [x, y, g] of cells) ctx.fillText(g, x, y); };
-        const fade = wide ? 1 : 1 - k * 0.92;
+        const fade = (wide ? 1 : 1 - k * 0.92) * (1 - shown);
         draw(coolArt, colors.plane, art * d * 0.7);
         draw(warmArt, colors.accent, art * d * 0.7);
         draw(skyCells, colors.muted, 0.55 * (1 - art));
         draw(planeCells, colors.plane, fade * d);
         draw(inkCells, colors.ink, fade * d);
         draw(accentCells, colors.accent, fade * d);
+        draw(coolScene, colors.plane, shown * (wide ? 1 : 0.35));
+        draw(warmScene, colors.accent, shown * (wide ? 1 : 0.35));
         ctx.globalAlpha = 1;
         raf = requestAnimationFrame(frame);
       };
@@ -343,6 +412,6 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
     })();
 
     return () => { disposed = true; cancelAnimationFrame(raf); cleanup(); };
-  }, [stunt]);
+  }, [stunt, focus]);
   return <canvas ref={ref} className="sky" aria-hidden="true" />;
 }

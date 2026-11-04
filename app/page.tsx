@@ -19,6 +19,7 @@ type Project = {
   stat: string;
   features: string[];
   facts: [string, string][];
+  links?: [string, string][];
 };
 
 const featured = ["kura", "canary", "culturerisk", "formula-racer", "refill"];
@@ -31,6 +32,7 @@ const projects: Project[] = [
     stat: "IMPACTHACK 2026",
     features: ["Plain-English instructions and follow-ups", "Side-by-side routes with climb, busy-road miles, bike-lane %", "Avoid any street by name with automatic re-routing", "Shows its math instead of AI-written excuses"],
     facts: [["Built for", "ImpactHack 2026"], ["Stack", "Python / Gemini / Valhalla"], ["Area", "California"]],
+    links: [["Live", "https://wayfinderbike.netlify.app"], ["Devpost", "https://devpost.com/software/wayfinder-wsea57"], ["iOS code", "https://github.com/aShah2025/Wayfinder"]],
   },
   {
     id: "culturerisk", number: "02", name: "CultureRisk", tag: "AI / Hackathon", color: "#7aa2f7", text: "#101417",
@@ -39,6 +41,7 @@ const projects: Project[] = [
     stat: "QLOO HACKATHON",
     features: ["Plans, acts, observes, and re-plans on its own", "Memo includes a popularity-trap section", "Also available as an MCP tool for other AI agents"],
     facts: [["Built for", "Qloo Hackathon"], ["Stack", "JavaScript / Netlify"], ["License", "MIT"]],
+    links: [["Code", "https://github.com/aShah2025/CultureRisk"], ["Devpost", "https://devpost.com/software/culturerisk-ai"]],
   },
   {
     id: "sum", number: "03", name: "Sum", tag: "iOS / Finance", color: "#5fb8a5", text: "#12150f",
@@ -55,6 +58,7 @@ const projects: Project[] = [
     stat: "BUILT FOR CAC 2025",
     features: ["Daily calorie total at a glance", "Protein, carbs, and fat tracked together", "Fast logging with no clutter"],
     facts: [["Platform", "iOS / SwiftUI"], ["Built for", "CAC 2025"], ["Focus", "Simplicity"]],
+    links: [["Code", "https://github.com/aShah2025/Kura"], ["Devpost", "https://devpost.com/software/kura-5itfqw"]],
   },
   {
     id: "canary", number: "10", name: "Canary", tag: "iOS / AI Health", color: "#f2d64b", text: "#14130a",
@@ -71,6 +75,7 @@ const projects: Project[] = [
     stat: "CLASSROOM SUPPLIES",
     features: ["Draft a supply request in plain English", "Browse California classroom projects", "Stripe test-mode checkout with verified receipts"],
     facts: [["Platform", "iOS 17+"], ["Backend", "Cloudflare Worker"], ["Data", "DonorsChoose"]],
+    links: [["Code", "https://github.com/aShah2025/Refill"], ["Devpost", "https://devpost.com/software/refill-s0bd9a"]],
   },
   {
     id: "coursefit", number: "06", name: "CourseFit", tag: "Web / Scheduling", color: "#55c2d3", text: "#16130e",
@@ -79,6 +84,7 @@ const projects: Project[] = [
     stat: "SCHOOL SCHEDULING",
     features: ["Collects student course selections", "Respects teacher availability", "Accounts for classroom capacity"],
     facts: [["Problem", "Manual scheduling"], ["Inputs", "Courses / teachers / rooms"], ["Output", "Conflict-free schedule"]],
+    links: [["Code", "https://github.com/aShah2025/CourseFit"], ["Devpost", "https://devpost.com/software/coursefit"]],
   },
   {
     id: "turbo-lane", number: "07", name: "Turbo Lane", tag: "Game / Arcade", color: "#f0913a", text: "#14110a",
@@ -185,6 +191,7 @@ type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
   const stunt = useRef(0);
+  const focus = useRef<string | null>(null); // the open row, whose scene the plane canvas shows
   const toggleTheme = useTheme();
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
@@ -195,6 +202,7 @@ export default function Home() {
         <p>{p.description}</p>
         <ul>{p.features.map((f) => <li key={f}>{f}</li>)}</ul>
         <dl>{p.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+        {p.links && <p className="out">{p.links.map(([label, href]) => <a key={href} href={href} target="_blank" rel="noreferrer">{label} ↗</a>)}</p>}
       </>
     ),
   }));
@@ -245,6 +253,7 @@ export default function Home() {
   const toggle = (id: string) => {
     const opening = openProject !== id;
     setOpenProject(opening ? id : null);
+    focus.current = opening && id !== "flying" ? id : null;
     if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
   };
 
@@ -268,7 +277,7 @@ export default function Home() {
 
   return (
     <main>
-      <AsciiPlane stunt={stunt} />
+      <AsciiPlane stunt={stunt} focus={focus} />
 
       <section className="intro" id="top">
         <h1>aaditya shah</h1>
@@ -309,11 +318,12 @@ export default function Home() {
 
         <section aria-labelledby="h-hi">
           <h3 id="h-hi">get in touch</h3>
-          <p>Got an idea? Let&apos;s build something. Best place to find me is GitHub.</p>
+          <p>Got an idea? Let&apos;s build something. My code is on GitHub and my hackathon projects are on Devpost.</p>
         </section>
 
         <footer className="links">
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
+          <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
           <a href="#top">Top ↑</a>
           <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode">☾</button>
           <span>© 2026</span>

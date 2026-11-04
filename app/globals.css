@@ -3,7 +3,6 @@
 :root {
   --paper: #f6f7f9; --ink: #1b2433; --muted: #6b7584; --faint: #a3abb7; --line: rgba(27,36,51,.1);
   --plane: #2f5d9b; --accent: #ff5a36;
-  --mono: var(--font-geist-mono), ui-monospace, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -13,12 +12,13 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--paper); }
-body { margin: 0; overflow-x: clip; background: var(--paper); color: var(--ink); font: 400 14px/1.6 var(--font-geist-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+/* the font variables are set on body by next/font, so --mono has to be defined there to resolve */
+body { --mono: var(--font-geist-mono), ui-monospace, monospace; margin: 0; overflow-x: clip; background: var(--paper); color: var(--ink); font: 400 14px/1.6 var(--font-geist-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 a, button { color: inherit; font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: none; }
 :focus-visible { outline: 1px dashed var(--accent); outline-offset: 3px; }
 ::selection { background: var(--plane); color: var(--paper); }
 
-.sky { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+.sky { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 main { position: relative; z-index: 1; }
 
 /* intro: the plane fills the screen, the name sits under it */
