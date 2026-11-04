@@ -126,6 +126,8 @@ const awards = [
 ];
 
 const LANGUAGES: [string, string?][] = [["Swift"], ["Python"], ["Java"], ["JavaScript"], ["HTML"], ["C++", "learning"]];
+const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
+const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
 const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
 
@@ -300,6 +302,12 @@ export default function Home() {
           <ul className="langs">
             {LANGUAGES.map(([name, note]) => <li key={name} className={note ? "learning" : ""}>{name}{note && <small> {note}</small>}</li>)}
           </ul>
+        </section>
+
+        <section aria-labelledby="h-setup">
+          <h3 id="h-setup">setup</h3>
+          <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+          <ul className="langs">{TOOLS.map((t) => <li key={t}>{t}</li>)}</ul>
         </section>
         <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
 
