@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type * as THREE_NS from "three";
 import { SCENES } from "./asciiScenes";
-import { buildCessna172 } from "./cessna172";
+import { disposeFlightModel, loadCessna172 } from "./cessna172";
 
 const TAU = Math.PI * 2;
 
@@ -68,28 +67,38 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let disposed = false, raf = 0;
-    let cleanup = () => {};
+    const abort = new AbortController();
+    const disposers: (() => void)[] = [];
+    const cleanup = () => { while (disposers.length) disposers.pop()!(); };
 
     const initialise = async () => {
       const [THREE, { RoomEnvironment }] = await Promise.all([
         import("three"), import("three/examples/jsm/environments/RoomEnvironment.js"), document.fonts.ready,
       ]);
       if (disposed) return;
+      const { plane, prop } = await loadCessna172(THREE, abort.signal);
+      if (disposed) { disposeFlightModel(THREE, plane); return; }
+      disposers.push(() => disposeFlightModel(THREE, plane));
       const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
       let reduced = motion.matches;
       const gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
+      disposers.push(() => gl.dispose());
+      gl.toneMapping = THREE.ACESFilmicToneMapping;
+      gl.toneMappingExposure = 0.95;
       const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4 });
+      disposers.push(() => rt.dispose());
       rt.texture.colorSpace = THREE.SRGBColorSpace;
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(gl), room = new RoomEnvironment();
-      const environment = pmrem.fromScene(room, 0.04);
-      room.dispose(); pmrem.dispose();
+      let environment: ReturnType<typeof pmrem.fromScene>;
+      try { environment = pmrem.fromScene(room, 0.04); }
+      finally { room.dispose(); pmrem.dispose(); }
+      disposers.push(() => environment.dispose());
       scene.environment = environment.texture;
       scene.environmentIntensity = 0.5;
-      scene.add(new THREE.HemisphereLight("#e8f0ff", "#8e6c58", 1.2));
-      const sun = new THREE.DirectionalLight("#ffe2c0", 3.1); sun.position.set(-6, 7, 5); scene.add(sun);
-      const fill = new THREE.DirectionalLight("#a9c9ff", 1.1); fill.position.set(5, 2, -6); scene.add(fill);
-      const { plane, prop } = buildCessna172(THREE);
+      scene.add(new THREE.HemisphereLight("#e8f0ff", "#8e6c58", 1.0));
+      const sun = new THREE.DirectionalLight("#ffe2c0", 2.6); sun.position.set(-6, 7, 5); scene.add(sun);
+      const fill = new THREE.DirectionalLight("#a9c9ff", 0.8); fill.position.set(5, 2, -6); scene.add(fill);
       const rig = new THREE.Group(); rig.add(plane); scene.add(rig);
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
       camera.position.set(0, 7.2, 29.1); camera.lookAt(0, 0, 0);
@@ -166,6 +175,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const onMove = (e: PointerEvent) => { pointer.tx = e.clientX / W - 0.5; pointer.ty = e.clientY / H - 0.5; };
       const onMotion = () => { reduced = motion.matches; needsDraw = true; };
       const mo = new MutationObserver(readColors);
+      disposers.push(() => mo.disconnect());
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
       let last = performance.now(), drawnAt = -Infinity, time = 0, seen = stunt.current, stuntAt = -1e9;
       let previousScroll = -1, previousFocus: string | null = null;
@@ -196,7 +206,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         rig.position.set(wide ? halfW * (textEdge / W) * k : 0, halfH * (0.18 + (wide ? -0.1 : 0.25) * k) + Math.sin(time * 0.9) * halfH * 0.015, 0);
         if (stunt.current !== seen) { seen = stunt.current; stuntAt = now; }
         const s = (now - stuntAt) / 1800, roll = !reduced && s > 0 && s < 1 ? TAU * (s * s * (3 - 2 * s)) : 0;
-        plane.rotation.set(0.04 + (reduced ? 0 : pointer.y * 0.2 + Math.sin(time * 0.7) * 0.025), -Math.PI / 2 - 0.68 + Math.sin(p * TAU) * 0.38 + (reduced ? 0 : pointer.x * 0.38), reduced ? 0 : Math.sin(time * 0.5) * 0.055 - pointer.x * 0.12, "YXZ");
+        plane.rotation.set(0.04 + (reduced ? 0 : pointer.y * 0.2 + Math.sin(time * 0.7) * 0.025), Math.PI / 2 + 0.68 + Math.sin(p * TAU) * 0.38 + (reduced ? 0 : pointer.x * 0.38), reduced ? 0 : Math.sin(time * 0.5) * 0.055 - pointer.x * 0.12, "YXZ");
         // Roll about the fuselage's longitudinal axis, which is local z.
         plane.rotateZ(roll); prop.rotation.z = reduced ? 0.35 : time * 45;
 
@@ -279,24 +289,16 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       window.addEventListener("resize", resize);
       window.addEventListener("pointermove", onMove, { passive: true });
       motion.addEventListener("change", onMotion);
-      cleanup = () => {
+      disposers.push(() => {
         window.removeEventListener("resize", resize); window.removeEventListener("pointermove", onMove);
-        motion.removeEventListener("change", onMotion); mo.disconnect();
-        const geometries = new Set<THREE_NS.BufferGeometry>(), materials = new Set<THREE_NS.Material>(), textures = new Set<THREE_NS.Texture>();
-        scene.traverse((object) => {
-          if (!(object instanceof THREE.Mesh)) return;
-          geometries.add(object.geometry);
-          for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-            materials.add(material);
-            for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
-          }
-        });
-        geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); textures.forEach((texture) => texture.dispose());
-        environment.dispose(); rt.dispose(); gl.dispose();
-      };
+        motion.removeEventListener("change", onMotion);
+      });
     };
-    initialise().catch((error: unknown) => { if (!disposed) console.error("Unable to initialise the flight illustration", error); });
-    return () => { disposed = true; cancelAnimationFrame(raf); cleanup(); };
+    initialise().catch((error: unknown) => {
+      cancelAnimationFrame(raf); cleanup();
+      if (!disposed) console.error("Unable to initialise the flight illustration", error);
+    });
+    return () => { disposed = true; abort.abort(); cancelAnimationFrame(raf); cleanup(); };
   }, [stunt, focus]);
   return <canvas ref={ref} className="sky" aria-hidden="true" />;
 }
