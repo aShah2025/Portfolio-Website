@@ -17,19 +17,30 @@ a, button { color: inherit; font: inherit; background: none; border: 0; padding:
 .sky { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 main { position: relative; z-index: 1; }
 
-/* intro: the plane fills the screen, the name sits under it */
-.intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; text-align: center; }
-.intro > * { padding: 5px 9px; background: var(--paper); border-radius: 2px; }
-.intro h1 { margin: 0; font: 500 15px/1 var(--mono); letter-spacing: .02em; }
+/* The opening and the portfolio share one document and one aircraft renderer. */
+.intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 32px 20px 7svh; text-align: center; }
+.intro[hidden], .index[hidden] { display: none; }
+.intro-copy-block { display: flex; flex-direction: column; align-items: center; }
+.flight-status { margin: 0 0 12px; color: #c4d0df; font: 400 10px/1.4 var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+.intro h1 { margin: 0; padding: 6px 10px; background: #0c0f14e8; font: 500 17px/1.2 var(--mono); letter-spacing: .02em; }
+.intro .prompt { padding: 5px 9px; background: #0c0f14d9; }
+.intro-actions { display: flex; align-items: center; gap: 19px; margin-top: 22px; }
+.enter-portfolio { display: inline-flex; align-items: center; gap: 23px; min-height: 45px; padding: 12px 17px; color: #151b24; background: #e7edf5; border: 1px solid #ffffff70; border-radius: 3px; font: 500 12px/1.4 var(--mono); transition: background .2s, transform .2s; }
+.enter-portfolio:hover:not(:disabled) { background: #fff; transform: translateY(-2px); }
+.enter-portfolio:disabled { cursor: default; opacity: .65; }
+.skip-intro { min-height: 44px; padding: 8px 2px; color: #d2dce8; font: 400 11px/1.4 var(--mono); text-shadow: 0 1px 7px #0c0f14; }
+.skip-intro:hover { color: #fff; }
+.portfolio-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 17px; margin-bottom: 26px; padding-bottom: 17px; border-bottom: 1px solid var(--line); font: 400 11px/1.4 var(--mono); color: var(--muted); }
+.portfolio-nav a, .portfolio-nav button { display: inline-flex; align-items: center; min-height: 32px; }
+.portfolio-nav button { margin-left: auto; gap: 5px; }
+.portfolio-nav a:hover, .portfolio-nav button:hover { color: var(--plane); }
+.index section { scroll-margin-top: 28px; }
 .prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .1em; text-transform: uppercase; }
 .typer i, .prompt > i { display: inline-block; width: .6em; height: 1.1em; margin-left: 3px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
-.hint { margin-top: 28px; font: 400 11px/1 var(--mono); color: var(--muted); letter-spacing: .08em; }
-.hint span { display: inline-block; animation: bob 1.6s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-@keyframes bob { 50% { transform: translateY(3px); } }
 
 /* index: one narrow column on the left, the plane flies on the right */
-.index { width: min(100%, 440px); padding: 12vh 16px 64px clamp(16px, 4vw, 48px); }
+.index { width: min(100%, 440px); padding: 38px 16px 64px clamp(16px, 4vw, 48px); }
 .who h2 { margin: 0; font: 500 22px/1 var(--mono); letter-spacing: -.01em; }
 .who .prompt { margin-top: 12px; }
 .where { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--muted); }
@@ -101,7 +112,7 @@ main { position: relative; z-index: 1; }
 .links span { margin-left: auto; color: var(--faint); }
 
 @media (max-width: 899px) {
-  .index { width: 100%; padding-top: 40vh; background: linear-gradient(to bottom, transparent, var(--paper) 30vh); }
+  .index { width: 100%; padding-top: 40vh; background: linear-gradient(to bottom, transparent 34vh, var(--paper) 38vh); }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
+import { TAKEOFF_MS, type FlightPhase, type FlightState } from "./flight";
 
 const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
 
@@ -214,8 +215,61 @@ type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
+  const [phase, setPhase] = useState<FlightPhase>("runway");
+  const [flightReady, setFlightReady] = useState(false);
   const stunt = useRef(0);
-  const focus = useRef<string | null>(null); // the open row, whose scene the plane canvas shows
+  const focus = useRef<string | null>(null);
+  const flight = useRef<FlightState>({ phase: "runway", startedAt: 0 });
+  const onFlightReady = useCallback(() => setFlightReady(true), []);
+
+  const finishFlight = useCallback(() => {
+    flight.current.phase = "portfolio";
+    setPhase("portfolio");
+    window.history.replaceState(null, "", "#index");
+    window.scrollTo({ top: 0, behavior: "instant" });
+    requestAnimationFrame(() => document.getElementById("portfolio-title")?.focus({ preventScroll: true }));
+  }, []);
+
+  const takeOff = () => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finishFlight(); return; }
+    flight.current = { phase: "takeoff", startedAt: performance.now() };
+    setPhase("takeoff");
+  };
+
+  const replayFlight = useCallback(() => {
+    pianoPlayer.stop();
+    focus.current = null;
+    setOpenProject(null);
+    flight.current = { phase: "runway", startedAt: 0 };
+    setPhase("runway");
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    requestAnimationFrame(() => document.getElementById("enter-portfolio")?.focus({ preventScroll: true }));
+  }, []);
+
+  // Direct project links and reloads from the portfolio bypass the opening flight.
+  useEffect(() => {
+    const followHash = () => {
+      const hash = window.location.hash;
+      if (hash === "#top") { if (flight.current.phase !== "runway") replayFlight(); return; }
+      if (!hash || flight.current.phase === "portfolio") return;
+      flight.current.phase = "portfolio";
+      setPhase("portfolio");
+      requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "instant" }));
+    };
+    followHash();
+    window.addEventListener("hashchange", followHash);
+    return () => window.removeEventListener("hashchange", followHash);
+  }, [replayFlight]);
+
+  // The content remains reachable even if the graphics context is interrupted during takeoff.
+  useEffect(() => {
+    if (phase !== "takeoff") return;
+    const timer = window.setTimeout(finishFlight, TAKEOFF_MS + 700);
+    const skipWithEscape = (event: KeyboardEvent) => { if (event.key === "Escape") finishFlight(); };
+    window.addEventListener("keydown", skipWithEscape);
+    return () => { window.clearTimeout(timer); window.removeEventListener("keydown", skipWithEscape); };
+  }, [phase, finishFlight]);
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
     id: p.id, name: p.name, meta: p.tag,
@@ -335,36 +389,47 @@ export default function Home() {
   );
 
   return (
-    <main>
-      <AsciiPlane stunt={stunt} focus={focus} />
+    <main data-flight-phase={phase}>
+      <AsciiPlane stunt={stunt} focus={focus} flight={flight} onReady={onFlightReady} onFlightComplete={finishFlight} />
+      <noscript><style>{`.intro { display: none !important; } .index[hidden] { display: block !important; }`}</style></noscript>
 
-      <section className="intro" id="top">
-        <h1>aaditya shah</h1>
-        <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
-        <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
+      <section className="intro" id="top" hidden={phase === "portfolio"} aria-labelledby="intro-title">
+        <div className="intro-copy-block">
+          <p className="flight-status" aria-live="polite">{phase === "takeoff" ? "Taking off…" : flightReady ? "Ready for takeoff" : "Preparing flight…"}</p>
+          <h1 id="intro-title">aaditya shah</h1>
+          <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
+          <div className="intro-actions">
+            <button id="enter-portfolio" className="enter-portfolio" type="button" disabled={!flightReady || phase === "takeoff"} onClick={takeOff}>{phase === "takeoff" ? "Taking off…" : "Enter portfolio"} <span aria-hidden="true">↗</span></button>
+            <button className="skip-intro" type="button" onClick={finishFlight}>Skip intro</button>
+          </div>
+        </div>
       </section>
 
-      <div className="index" id="index">
+      <div className="index" id="index" hidden={phase !== "portfolio"}>
+        <nav className="portfolio-nav" aria-label="Portfolio sections">
+          <a href="#work">Work</a><a href="#setup">Setup</a><a href="#life">Life</a><a href="#contact">Contact</a>
+          <button type="button" onClick={replayFlight} aria-label="Return to the runway">Flight <span aria-hidden="true">↶</span></button>
+        </nav>
         <header className="who">
-          <h2>aaditya</h2>
+          <h2 id="portfolio-title" tabIndex={-1}>aaditya</h2>
           <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
           <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
           <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
         </header>
 
-        <section aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
+        <section id="work" aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
 
         <section aria-labelledby="h-lang">
           <h3 id="h-lang">languages</h3>
           {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
         </section>
 
-        <section aria-labelledby="h-setup">
+        <section id="setup" aria-labelledby="h-setup">
           <h3 id="h-setup">setup</h3>
           <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
           {chips(TOOLS)}
         </section>
-        <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
+        <section id="life" aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
 
         <section aria-labelledby="h-rec">
           <h3 id="h-rec">recognition</h3>
@@ -379,7 +444,7 @@ export default function Home() {
           <p className="aside">Congressional App Challenge 2025 recognition for Kura. Competing again in 2026 with Canary.</p>
         </section>
 
-        <section aria-labelledby="h-hi">
+        <section id="contact" aria-labelledby="h-hi">
           <h3 id="h-hi">get in touch</h3>
           <p>Got an idea? Let&apos;s build something. My code is on GitHub and my hackathon projects are on Devpost.</p>
         </section>
@@ -388,7 +453,7 @@ export default function Home() {
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
           <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
           <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume ↗</a>
-          <a href="#top">Top ↑</a>
+          <button type="button" onClick={replayFlight}>Replay flight ↶</button>
           <span>© 2026</span>
         </footer>
       </div>
