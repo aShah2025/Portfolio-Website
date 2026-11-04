@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
 
-const Viewer = dynamic(() => import("./Viewer"), { ssr: false });
+const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
+
 
 type Project = {
   id: string;
@@ -118,506 +119,197 @@ const awards = [
   { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
 ];
 
-function useReveal() {
-  useEffect(() => {
-    const els = document.querySelectorAll<HTMLElement>("[data-reveal]");
-    if (!("IntersectionObserver" in window)) {
-      els.forEach((el) => el.classList.add("in"));
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
-      { threshold: 0.18, rootMargin: "0px 0px -6% 0px" },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-}
+const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
 
-// Headlines arrive as random symbols that settle into the real letters from left to right, the same glyphs
-// the 3D scenes are drawn with. Text inside [data-noscramble] (the count-ups) is left alone.
-const SCRAMBLE = "/?<>%*#@+=:;";
-function useScramble() {
+// Types out each role, holds it, deletes it, and moves to the next, like someone at a terminal.
+function Typer() {
+  const [text, setText] = useState(ROLES[0]);
   useEffect(() => {
-    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-scramble]"));
-    const raf: number[] = [];
-    const run = (el: HTMLElement) => {
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-      const nodes: [Text, string][] = [];
-      while (walker.nextNode()) { const t = walker.currentNode as Text; if (t.data.trim() && !t.parentElement?.closest("[data-noscramble]")) nodes.push([t, t.data]); }
-      const total = nodes.reduce((n, [, s]) => n + s.length, 0);
-      const t0 = performance.now(), dur = Math.min(1500, 450 + total * 30);
-      const step = (now: number) => {
-        const k = (now - t0) / dur;
-        let i = 0;
-        for (const [node, orig] of nodes) node.data = Array.from(orig, (ch) => (ch === " " || i++ / total < k ? ch : SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0])).join("");
-        if (k < 1) raf.push(requestAnimationFrame(step));
-        else nodes.forEach(([n, o]) => { n.data = o; });
-      };
-      raf.push(requestAnimationFrame(step));
-    };
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) { io.unobserve(e.target); run(e.target as HTMLElement); } }),
-      { threshold: 0.3 },
-    );
-    els.forEach((el) => { if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", el.innerText.replace(/\s+/g, " ").trim()); io.observe(el); });
-    return () => { io.disconnect(); raf.forEach(cancelAnimationFrame); };
-  }, []);
-}
-
-function useScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      ref.current?.style.setProperty("--p", String(max > 0 ? window.scrollY / max : 0));
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
-  }, [ref]);
-}
-
-function usePin(ref: React.RefObject<HTMLElement | null>, onP?: (p: number, el: HTMLElement) => void) {
-  const prog = useRef(0);
-  const cb = useRef(onP);
-  useEffect(() => { cb.current = onP; });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const stages = Array.from(el.querySelectorAll<HTMLElement>("[data-in]"));
-    let raf = 0;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let i = 0, n = ROLES[0].length, dir = -1, id = 0;
     const tick = () => {
-      raf = 0;
-      const r = el.getBoundingClientRect();
-      const max = r.height - window.innerHeight;
-      const p = Math.min(1, Math.max(0, max > 0 ? -r.top / max : 0));
-      prog.current = p;
-      for (const st of stages) {
-        const a = Number(st.dataset.in), b = Number(st.dataset.out);
-        const o = Math.min(1, Math.max(0, (p - a) / 0.05)) * Math.min(1, Math.max(0, (b - p) / 0.05));
-        st.style.opacity = String(o);
-        st.style.transform = `translateY(${(1 - o) * 26}px)`;
-      }
-      cb.current?.(p, el);
+      const word = ROLES[i];
+      n += dir;
+      setText(word.slice(0, n));
+      let wait = dir > 0 ? 70 : 35;
+      if (dir > 0 && n >= word.length) { dir = -1; wait = 1800; }
+      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % ROLES.length; wait = 300; }
+      id = window.setTimeout(tick, wait);
     };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    tick();
-    window.addEventListener("scroll", on, { passive: true });
-    window.addEventListener("resize", on);
-    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); if (raf) cancelAnimationFrame(raf); };
-  }, [ref]);
-  return prog;
+    id = window.setTimeout(tick, 2200);
+    return () => clearTimeout(id);
+  }, []);
+  return <span className="typer">{text}<i aria-hidden="true" /></span>;
 }
 
-function statementWords(p: number, el: HTMLElement) {
-  const words = el.querySelectorAll<HTMLElement>("[data-w]");
-  words.forEach((w, i) => {
-    const o = Math.min(1, Math.max(0, (p - (i / words.length) * 0.8 - 0.04) / 0.07));
-    w.style.opacity = String(0.16 + 0.84 * o);
-  });
+// A text progress bar: [#######---]
+const bar = (done: number, of: number) => `[${"#".repeat(done)}${"-".repeat(of - done)}]`;
+
+function useTheme() {
+  const toggle = () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch { /* private mode: the choice just isn't remembered */ }
+  };
+  return toggle;
 }
 
-function CountUp({ to }: { to: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = String(to); return; }
-    const io = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) return;
-      io.disconnect();
-      const t0 = performance.now();
-      const step = (t: number) => { const k = Math.min(1, (t - t0) / 1600); el.textContent = String(Math.round(to * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(step); };
-      requestAnimationFrame(step);
-    }, { threshold: 0.5 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [to]);
-  return <span ref={ref} data-noscramble>{to}</span>;
-}
-
-function Art({ id }: { id: string }) {
-  const common = { viewBox: "0 0 800 400", preserveAspectRatio: "xMidYMid slice", fill: "none", stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-  switch (id) {
-    case "wayfinder":
-      return (
-        <svg {...common}>
-          <g opacity=".22" strokeWidth="1.5">{Array.from({ length: 17 }, (_, i) => <path key={`v${i}`} d={`M${i * 50} 0V400`} />)}{Array.from({ length: 9 }, (_, i) => <path key={`h${i}`} d={`M0 ${i * 50}H800`} />)}</g>
-          <path d="M-20 330 C120 300 160 200 300 220 S480 340 560 230 S700 80 830 110" strokeWidth="14" opacity=".15" />
-          <path className="draw" pathLength="1" d="M-20 330 C120 300 160 200 300 220 S480 340 560 230 S700 80 830 110" strokeWidth="9" />
-          <circle cx="40" cy="322" r="14" fill="currentColor" />
-          <g className="pin"><circle cx="700" cy="96" r="26" fill="var(--project-color)" strokeWidth="6" /><circle cx="700" cy="96" r="9" fill="currentColor" /></g>
-        </svg>
-      );
-    case "kura":
-      return (
-        <svg {...common}>
-          {[0, 1, 2].map((i) => {
-            const h = [260, 180, 220][i];
-            const x = 120 + i * 220;
-            return <g key={i} className="bar" style={{ ["--d" as string]: `${i * 0.15}s` }}><rect x={x} y={360 - h} width="160" height={h} strokeWidth="3" /><rect className="bar-fill" x={x} y={360 - h} width="160" height={h} fill="var(--project-color)" stroke="none" /></g>;
-          })}
-          <path d="M60 360H760" strokeWidth="4" />
-          <circle className="ring" cx="690" cy="110" r="64" strokeWidth="14" opacity=".25" />
-          <circle className="ring-arc" cx="690" cy="110" r="64" strokeWidth="14" pathLength="1" />
-        </svg>
-      );
-    case "canary":
-      return (
-        <svg {...common}>
-          <rect x="40" y="170" width="720" height="90" rx="45" fill="var(--project-color)" stroke="none" opacity=".14" />
-          <path d="M40 215H760" strokeWidth="1.5" strokeDasharray="6 10" opacity=".5" />
-          <path className="draw" pathLength="1" d="M40 220 C100 190 140 240 200 212 S300 186 360 222 S460 238 520 205 S600 250 640 290 S700 330 740 320" strokeWidth="7" />
-          <circle className="flag" cx="740" cy="320" r="16" fill="var(--project-color)" strokeWidth="5" />
-          <path transform="translate(590 0)" d="M120 70a34 34 0 1 0 40 44a28 28 0 1 1 -40 -44z" fill="var(--project-color)" stroke="none" />
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => <rect key={i} x={200 + i * 64} y="80" width="40" height="40" rx="8" fill={i === 3 || i === 4 ? "var(--project-color)" : "none"} strokeWidth="2.5" opacity={i === 3 || i === 4 ? 1 : 0.5} />)}
-        </svg>
-      );
-    case "refill":
-      return (
-        <svg {...common}>
-          <g opacity=".25" strokeWidth="1.5"><circle cx="400" cy="200" r="90" /><circle cx="400" cy="200" r="170" /><circle cx="400" cy="200" r="250" /></g>
-          <g className="links" strokeWidth="2.5" strokeDasharray="6 10"><path d="M400 200 160 90" /><path d="M400 200 650 110" /><path d="M400 200 190 320" /><path d="M400 200 640 310" /></g>
-          <g className="node" style={{ ["--d" as string]: "0s" }}><circle cx="400" cy="200" r="34" fill="currentColor" /></g>
-          {[[160, 90], [650, 110], [190, 320], [640, 310]].map(([x, y], i) => (
-            <g className="node" key={i} style={{ ["--d" as string]: `${0.2 + i * 0.15}s` }}><circle cx={x} cy={y} r="24" fill="var(--project-color)" strokeWidth="5" /><circle cx={x} cy={y} r="7" fill="currentColor" /></g>
-          ))}
-          <circle className="pulse" cx="400" cy="200" r="34" strokeWidth="4" />
-        </svg>
-      );
-    case "turbo-lane":
-      return (
-        <svg {...common}>
-          <g opacity=".5" strokeWidth="3"><path d="M270 0V400M530 0V400" strokeDasharray="30 28" className="dashes" /><path d="M120 0V400M680 0V400" strokeWidth="6" /></g>
-          {[[155, 40], [330, 120], [600, 20], [440, 250]].map(([x, y], i) => (
-            <g key={i} className="car" style={{ ["--d" as string]: `${-i * 0.9}s`, ["--s" as string]: `${3 + (i % 2) * 0.6}s` }}><rect x={x} y={y} width="70" height="120" rx="14" fill="var(--project-color)" strokeWidth="5" /><rect x={x + 12} y={y + 24} width="46" height="28" rx="6" fill="currentColor" /></g>
-          ))}
-          <g className="player"><rect x="365" y="270" width="70" height="120" rx="14" fill="currentColor" /><rect x="377" y="294" width="46" height="28" rx="6" fill="var(--project-color)" stroke="none" /></g>
-        </svg>
-      );
-    case "formula-racer":
-      return (
-        <svg {...common}>
-          <path d="M120 300 C90 190 190 90 330 110 C440 126 470 220 570 190 C690 154 740 190 700 290 C670 360 540 350 440 330 C330 308 170 400 120 300Z" strokeWidth="26" opacity=".18" />
-          <path d="M120 300 C90 190 190 90 330 110 C440 126 470 220 570 190 C690 154 740 190 700 290 C670 360 540 350 440 330 C330 308 170 400 120 300Z" strokeWidth="3" strokeDasharray="4 12" />
-          <path id="track" d="M120 300 C90 190 190 90 330 110 C440 126 470 220 570 190 C690 154 740 190 700 290 C670 360 540 350 440 330 C330 308 170 400 120 300Z" strokeWidth="0" />
-          <circle r="14" fill="currentColor"><animateMotion dur="4.5s" repeatCount="indefinite" rotate="auto"><mpath href="#track" /></animateMotion></circle>
-          <circle r="10" fill="var(--project-color)" strokeWidth="4"><animateMotion dur="4.5s" begin="-1.3s" repeatCount="indefinite"><mpath href="#track" /></animateMotion></circle>
-          <path d="M120 270V330" strokeWidth="8" />
-        </svg>
-      );
-    case "winglab":
-      return (
-        <svg {...common}>
-          {[70, 120, 170, 230, 280, 330].map((y, i) => (
-            <path key={y} className="flow" style={{ ["--d" as string]: `${-i * 0.35}s` }} d={`M-40 ${y} C200 ${y} 300 ${y < 200 ? y - 40 : y + 40} 420 ${y < 200 ? y - 34 : y + 34} S650 ${y} 840 ${y}`} strokeWidth="3" strokeDasharray="22 16" />
-          ))}
-          <g className="wing"><path d="M250 205 C320 150 480 160 560 200 C480 232 330 244 250 205Z" fill="var(--project-color)" strokeWidth="6" /><path d="M250 205H560" strokeWidth="2" opacity=".5" /></g>
-          <path d="M400 150V70M385 88 400 66 415 88" strokeWidth="5" className="lift" />
-        </svg>
-      );
-    case "culturerisk":
-      return (
-        <svg {...common}>
-          <g className="links" strokeWidth="2" strokeDasharray="5 9"><path d="M400 200 170 110M400 200 640 90M400 200 150 310M400 200 660 300M170 110 150 310M640 90 660 300" /></g>
-          {[[400, 200, 40], [170, 110, 22], [640, 90, 26], [150, 310, 20], [660, 300, 24]].map(([x, y, r], i) => (
-            <g className="node" key={i} style={{ ["--d" as string]: `${i * 0.2}s` }}><circle cx={x} cy={y} r={r} fill={i === 0 ? "currentColor" : "var(--project-color)"} strokeWidth="4" /></g>
-          ))}
-          <circle className="pulse" cx="400" cy="200" r="40" strokeWidth="3" />
-        </svg>
-      );
-    case "sum":
-      return (
-        <svg {...common}>
-          <path d="M60 340H760" strokeWidth="3" opacity=".4" />
-          {[0, 1, 2, 3, 4].map((i) => <rect key={i} className="coin" x={110 + i * 130} y={330 - i * 38} width="70" height={i * 38 + 10} rx="6" fill="var(--project-color)" stroke="none" style={{ ["--d" as string]: `${i * 0.12}s` }} />)}
-          <path className="draw" pathLength="1" d="M145 312 C210 302 230 282 275 274 S360 244 405 236 S490 207 535 198 S620 168 665 160" strokeWidth="5" />
-          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={145 + i * 130} cy={312 - i * 38} r="9" fill="var(--paper)" strokeWidth="4" />)}
-        </svg>
-      );
-    case "coursefit":
-      return (
-        <svg {...common}>
-          {Array.from({ length: 5 }, (_, c) => Array.from({ length: 5 }, (_, r) => {
-            const on = (c * 3 + r * 2) % 5 !== 0;
-            return <rect key={`${c}${r}`} className={on ? "slot" : "slot off"} x={90 + c * 130} y={50 + r * 62} width="112" height="48" rx="6" fill={on ? "currentColor" : "none"} strokeWidth="2.5" style={{ ["--d" as string]: `${(c + r) * 0.1}s` }} />;
-          }))}
-        </svg>
-      );
-    default:
-      return null;
-  }
-}
-
-const sections: [string, string][] = [["about", "About"], ["work", "Work"], ["debate", "Debate"], ["kungfu", "Kung Fu"], ["piano", "Piano"], ["awards", "Awards"]];
-
-// The piano starts sounding when its section scrolls into view (once the visitor has interacted with the page,
-// which browsers require for audio) and pauses when it leaves. Pausing it by hand keeps it paused.
-function usePiano() {
+function PianoControls() {
   const [, rerender] = useState(0);
-  const userPaused = useRef(false);
   useEffect(() => {
     const off = pianoPlayer.subscribe(() => rerender((n) => n + 1));
     if (!pianoPlayer.notes.length) pianoPlayer.load(PIECES[0].id);
-    const el = document.getElementById("piano");
-    const io = el && new IntersectionObserver(([e]) => {
-      const active = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive;
-      if (e.isIntersecting && active && !userPaused.current && !pianoPlayer.playing) pianoPlayer.play(pianoPlayer.piece.id, pianoPlayer.offset);
-      if (!e.isIntersecting) pianoPlayer.stop();
-    }, { threshold: 0.45 });
-    if (el && io) io.observe(el);
-    return () => { off(); io?.disconnect(); pianoPlayer.stop(); };
+    return () => { off(); pianoPlayer.stop(); };
   }, []);
-  const toggle = () => {
-    if (pianoPlayer.playing) { userPaused.current = true; pianoPlayer.stop(); }
-    else { userPaused.current = false; pianoPlayer.play(pianoPlayer.piece.id, pianoPlayer.offset); }
-  };
-  const choose = (id: string) => { userPaused.current = false; pianoPlayer.play(id, 0); };
-  return { player: pianoPlayer, toggle, choose };
+  const p = pianoPlayer;
+  return (
+    <div className="piano-ctl">
+      {PIECES.map((piece) => {
+        const on = piece.id === p.piece.id && p.playing;
+        return (
+          <button key={piece.id} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={() => (on ? p.stop() : p.play(piece.id, piece.id === p.piece.id ? p.offset : 0))}>
+            <span>{on ? "❚❚" : "▶"}</span> {piece.composer}, {piece.title}
+          </button>
+        );
+      })}
+      <small>{p.piece.credit}. Samples: Salamander Grand Piano, CC BY 3.0.</small>
+    </div>
+  );
 }
 
-function PianoProgress() {
-  const bar = useRef<HTMLSpanElement>(null), label = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    let raf = 0;
-    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    const loop = () => {
-      const t = pianoPlayer.position() ?? pianoPlayer.offset, d = pianoPlayer.duration || 1;
-      if (bar.current) bar.current.style.transform = `scaleX(${Math.min(1, t / d)})`;
-      if (label.current) label.current.textContent = `${fmt(t)} / ${fmt(pianoPlayer.duration)}`;
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return <div className="pp-progress"><i><span ref={bar} /></i><span ref={label}>0:00</span></div>;
-}
-
-function useActiveSection() {
-  const [active, setActive] = useState("");
-  useEffect(() => {
-    const on = () => {
-      let cur = "";
-      for (const [id] of sections) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < window.innerHeight * 0.4) cur = id; }
-      setActive(cur);
-    };
-    on();
-    window.addEventListener("scroll", on, { passive: true });
-    return () => window.removeEventListener("scroll", on);
-  }, []);
-  return active;
-}
+type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 
 export default function Home() {
-  const [openProject, setOpenProject] = useState<string | null>(featured[0]);
-  const progress = useRef<HTMLDivElement>(null);
-  const nav = useRef<HTMLElement>(null);
-  const macRef = useRef<HTMLElement>(null);
-  const stRef = useRef<HTMLElement>(null);
-  useReveal();
-  useScramble();
-  const active = useActiveSection();
-  const { player, toggle, choose } = usePiano();
-  useScrollProgress(progress);
-  const macP = usePin(macRef);
-  usePin(stRef, statementWords);
-  useEffect(() => {
-    const on = () => nav.current?.classList.toggle("scrolled", window.scrollY > 60);
-    on();
-    window.addEventListener("scroll", on, { passive: true });
-    return () => window.removeEventListener("scroll", on);
-  }, []);
+  const [openProject, setOpenProject] = useState<string | null>(null);
+  const stunt = useRef(0);
+  const toggleTheme = useTheme();
+
+  const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
+    id: p.id, name: p.name, meta: p.tag,
+    body: (
+      <>
+        <p className="lead">{p.short}</p>
+        <p>{p.description}</p>
+        <ul>{p.features.map((f) => <li key={f}>{f}</li>)}</ul>
+        <dl>{p.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      </>
+    ),
+  }));
+
+  const life: Item[] = [
+    {
+      id: "flying", name: "Flying", meta: "The goal",
+      body: (
+        <>
+          <p className="lead">Private pilot licence, eventually.</p>
+          <p>That&apos;s the plane up there. Ground school first, then the first solo, then the checkride. For now it&apos;s simulators and WingLab.</p>
+          <pre className="track">{`${bar(1, 10)} ground school\n${bar(0, 10)} first solo\n${bar(0, 10)} checkride`}</pre>
+        </>
+      ),
+    },
+    {
+      id: "debate", name: "Debate", meta: "Policy / Congress",
+      body: (
+        <>
+          <p className="lead">Argue it, then build it.</p>
+          <p><b>Policy</b> is two people on one resolution for a whole season: heavy research, tight evidence, fast delivery, and defending a side before flipping to attack it.</p>
+          <p><b>Congress</b> is a mock legislature: speeches for and against real bills, questions from the floor, and persuading a room that doesn&apos;t have to agree with you.</p>
+          <p>It&apos;s where I learned to explain a messy problem clearly, which is most of what building a useful app comes down to.</p>
+        </>
+      ),
+    },
+    {
+      id: "kungfu", name: "Kung Fu", meta: "5 years",
+      body: (
+        <>
+          <p className="lead">Red-black belt. Black belt test in April 2027.</p>
+          <pre className="track">{`${bar(9, 10)} red-black belt\n${bar(0, 10)} black belt, apr 2027`}</pre>
+          <p>Five years of showing up, repeating the basics, and testing for the next belt.</p>
+        </>
+      ),
+    },
+    {
+      id: "piano", name: "Piano", meta: "6 years / RCM 9",
+      body: (
+        <>
+          <p className="lead">Classical, Royal Conservatory Level 9.</p>
+          <PianoControls />
+        </>
+      ),
+    },
+  ];
+
+  const toggle = (id: string) => {
+    const opening = openProject !== id;
+    setOpenProject(opening ? id : null);
+    if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
+  };
+
+  const list = (items: Item[]) => (
+    <ul className="project-list">
+      {items.map((it) => {
+        const isOpen = openProject === it.id;
+        return (
+          <li key={it.id} id={it.id} className={isOpen ? "open" : ""}>
+            <button type="button" aria-expanded={isOpen} aria-controls={`${it.id}-body`} onClick={() => toggle(it.id)}>
+              <span className="dash" aria-hidden="true">—</span>
+              <span className="name">{it.name}</span>
+              <span className="meta">{it.meta}</span>
+            </button>
+            <div className="body" id={`${it.id}-body`} hidden={!isOpen}>{it.body}</div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <main>
-      <div className="progress" ref={progress} aria-hidden="true" />
-      <nav className="topbar" aria-label="Main navigation" ref={nav}>
-        <a className="nav-name" href="#top">AS</a>
-        <div className="nav-links">
-          {sections.map(([id, name]) => <a key={id} href={`#${id}`} className={active === id ? "on" : ""}>{name}</a>)}
+      <AsciiPlane stunt={stunt} />
+
+      <section className="intro" id="top">
+        <h1>aaditya shah</h1>
+        <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
+        <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
+      </section>
+
+      <div className="index" id="index">
+        <header className="who">
+          <h2>aaditya</h2>
+          <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
+          <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
+          <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
+        </header>
+
+        <section aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
+        <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
+
+        <section aria-labelledby="h-rec">
+          <h3 id="h-rec">recognition</h3>
+          <ul className="awards">
+            {awards.map((a) => (
+              <li key={a.title}>
+                <span className="yr">{a.year.toLowerCase()}</span>
+                <span><b>{a.title}</b> <span className="note">{a.note}</span></span>
+              </li>
+            ))}
+          </ul>
+          <p className="aside">Congressional App Challenge 2025 recognition for Kura. Competing again in 2026 with Canary.</p>
+        </section>
+
+        <section aria-labelledby="h-hi">
+          <h3 id="h-hi">get in touch</h3>
+          <p>Got an idea? Let&apos;s build something. Best place to find me is GitHub.</p>
+        </section>
+
+        <footer className="links">
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
-        </div>
-      </nav>
-
-      <section className="hero" id="top">
-        <div className="hero-meta"><span>HIGH-SCHOOL STUDENT</span><span>LELAND HIGH · SAN JOSE, CA</span><span>PORTFOLIO / 2026</span></div>
-        <h1 aria-label="Aaditya Shah" data-scramble><span><em>Aaditya</em></span><span><em>Shah<i>.</i></em></span></h1>
-        <div className="hero-bottom">
-          <p>I build apps, games, websites,<br />and whatever I want to learn next.</p>
-          <a href="#work">See the work <span>↓</span></a>
-        </div>
-        <div className="hero-scene"><Viewer kind="desk" label="Interactive 3D render of a MacBook with a small solar system floating beside it" /></div>
-      </section>
-
-
-      <section className="pin pin-mac" ref={macRef} aria-label="Scroll story: a laptop opening">
-        <div className="pin-sticky">
-          <Viewer kind="mac" progress={macP} label="3D MacBook that opens as you scroll while the camera orbits around it" />
-          <div className="pin-text">
-            <p className="stage" data-in="-0.1" data-out="0.24">Hi, I&apos;m Aaditya.</p>
-            <p className="stage" data-in="0.3" data-out="0.56">Student at Leland High.</p>
-            <p className="stage" data-in="0.64" data-out="1.1">I build apps, agents, and games.</p>
-          </div>
-          <span className="scroll-hint" aria-hidden="true">Scroll</span>
-        </div>
-      </section>
-
-      <section className="statement" ref={stRef}>
-        <div className="pin-sticky">
-          <p>{"I build apps, AI agents, and games. I argue policy and Congress. I train kung fu. I play piano.".split(" ").map((w, i) => <span key={i} data-w>{w} </span>)}</p>
-        </div>
-      </section>
-
-      <section className="about" id="about">
-        <div className="about-kicker">01 / ABOUT</div>
-        <div className="about-title" data-reveal data-scramble><span>Leland</span><span>High,</span><span>San Jose.</span></div>
-        <div className="about-copy" data-reveal>
-          <p>I&apos;m in high school at Leland, and went to Bret Harte Middle School before that. I&apos;m strongest at product ideas, iOS apps, games, and web design.</p>
-          <p>Outside of school I debate policy and Congress, train kung fu, and play piano. I&apos;m also in the Leland Hackathon Club and Leland Motorsport Club.</p>
-        </div>
-      </section>
-
-      <section className="work" id="work">
-        <header className="section-head" data-reveal>
-          <span>02 / SELECTED WORK</span>
-          <h2 data-scramble>Things I&apos;ve<br />built so far.</h2>
-          <p>The five I&apos;m proudest of, across iOS, AI agents, and games. Open any one for what it does and how it works.</p>
-        </header>
-
-        <div className="project-list">
-          {featured.map((id) => projects.find((p) => p.id === id)!).map((project, i) => {
-            const isOpen = openProject === project.id;
-            return (
-              <article className={`project ${isOpen ? "open" : ""}`} id={project.id} key={project.id} style={{ "--project-color": project.color } as React.CSSProperties}>
-                <button className="project-trigger" type="button" aria-expanded={isOpen} aria-controls={`${project.id}-details`} onClick={() => setOpenProject(isOpen ? null : project.id)}>
-                  <span className="project-number">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="project-title">{project.name}</span>
-                  <span className="project-tag">{project.tag}</span>
-                  <span className="project-toggle" aria-hidden="true">{isOpen ? "−" : "+"}</span>
-                </button>
-                <div className="project-details" id={`${project.id}-details`}>
-                  <div className="project-inner">
-                    <div className="project-copy">
-                      <p>{project.short}</p>
-                      <div>
-                        <p>{project.description}</p>
-                        <ul className="project-features">{project.features.map((f) => <li key={f}>{f}</li>)}</ul>
-                      </div>
-                    </div>
-                    <dl className="project-facts">{project.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-                    <div className={`project-art art-${project.id}`} aria-hidden="true"><span>{project.stat}</span><Art id={project.id} /></div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-        <div className="also-built" data-reveal>
-          <span>Also built</span>
-          <ul>{projects.filter((p) => !featured.includes(p.id)).map((p) => <li key={p.id}><b>{p.name}</b> {p.short}</li>)}</ul>
-        </div>
-      </section>
-
-      <section className="recognition" id="recognition">
-        <div className="recognition-label">03 / RECOGNITION &amp; HACKATHONS</div>
-        <div className="seal" aria-hidden="true"><svg viewBox="0 0 200 200"><defs><path id="circ" d="M100 100 m-78 0 a78 78 0 1 1 156 0 a78 78 0 1 1 -156 0" /></defs><text><textPath href="#circ">CONGRESSIONAL APP CHALLENGE ✦ 2025 ✦ 2026 ✦</textPath></text></svg><b>CAC</b></div>
-        <p data-reveal data-scramble>Congressional</p><p data-reveal data-scramble>recognition<span>.</span></p>
-        <div className="recognition-footer"><span>Recognized in the Congressional App Challenge 2025 for Kura. Competing again in 2026 with Canary.</span><span>2025 / 2026</span></div>
-        <ul className="award-list code-awards">
-          {awards.filter((a) => a.code).map((a, i) => (
-            <li className="award" key={a.title} data-reveal style={{ "--i": i } as React.CSSProperties}>
-              <a href={a.href} {...(a.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}><span className="award-year">{a.year}</span><span className="award-title">{a.title}</span><span className="award-note">{a.note}</span><span className="award-kind">{a.kind}</span></a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="debate" id="debate">
-        <header className="debate-head" data-reveal><span>04 / DEBATE</span><h2 data-scramble>Argue it,<br />then build it.</h2></header>
-        <div className="debate-grid">
-          <article data-reveal>
-            <h3>Policy debate</h3>
-            <p>A two-person event built around one resolution for the whole season. It rewards heavy research, tight evidence, fast delivery, and the ability to defend a position and then flip and attack it.</p>
-            <ul><li>Constructive speeches and rebuttals</li><li>Cross-examination under pressure</li><li>Evidence-driven case writing</li></ul>
-          </article>
-          <article data-reveal>
-            <h3>Congress</h3>
-            <p>A mock legislature. Every round you work through real bills and resolutions: giving speeches for or against, answering questions from other legislators, and persuading a room that does not have to agree with you.</p>
-            <ul><li>Speeches on proposed legislation</li><li>Questioning and floor debate</li><li>Writing and sponsoring legislation</li></ul>
-          </article>
-        </div>
-        <p className="debate-line" data-reveal>Debate is where I learned to explain a messy problem clearly, which is most of what building a useful app comes down to.</p>
-      </section>
-
-      <section className="kungfu" id="kungfu">
-        <header className="kf-head" data-reveal><span>05 / KUNG FU</span><h2 data-scramble><CountUp to={5} /> years<br />on the mat.</h2></header>
-        <div className="kf-stats">
-          <div data-reveal><b>5 years</b><span>Training</span></div>
-          <div data-reveal><b>Red-black belt</b><span>Current rank</span></div>
-          <div data-reveal><b>April 2027</b><span>Black belt test, expected</span></div>
-        </div>
-        <div className="kf-track" data-reveal aria-label="Progress toward black belt">
-          <i><u /></i>
-          <ol>
-            <li><b>5 years ago</b><span>Started training</span></li>
-            <li className="here"><b>Now</b><span>Red-black belt</span></li>
-            <li><b>April 2027</b><span>Black belt test</span></li>
-          </ol>
-        </div>
-        <p className="kf-copy" data-reveal>Five years of showing up, repeating the basics, and testing for the next belt. The black belt test is the next milestone.</p>
-      </section>
-
-      <section className="piano" id="piano">
-        <div className="piano-copy">
-          <header className="kf-head piano-head" data-reveal><span>06 / PIANO</span><h2 data-scramble><CountUp to={6} /> years<br />at the keys.</h2></header>
-          <div className="kf-stats piano-stats">
-            <div data-reveal><b>Classical</b><span>Focus</span></div>
-            <div data-reveal><b>RCM Level 9</b><span>Royal Conservatory</span></div>
-          </div>
-        </div>
-        <figure className="render piano-render" data-reveal>
-          <Viewer kind="piano" label="Dot-outline 3D render of a grand piano playing the opening of the Moonlight Sonata's third movement. Drag to rotate." />
-          <figcaption className="piano-play">
-            <div className="pp-now">
-              <button type="button" className="pp-toggle" aria-pressed={player.playing} aria-label={player.playing ? "Pause" : "Play with sound"} onClick={toggle}>{player.playing ? "❚❚" : "▶"}</button>
-              <div><b>{player.piece.composer}</b><span>{player.piece.title}</span></div>
-            </div>
-            <PianoProgress />
-            <ol className="pp-list">
-              {PIECES.map((p) => <li key={p.id}><button type="button" className={p.id === player.piece.id ? "on" : ""} onClick={() => choose(p.id)}><b>{p.composer}</b> {p.title}</button></li>)}
-            </ol>
-            <small>{player.piece.credit}. Piano samples: Salamander Grand Piano, CC BY 3.0.</small>
-          </figcaption>
-        </figure>
-      </section>
-
-      <section className="awards" id="awards">
-        <header className="awards-head" data-reveal>
-          <span>07 / AWARDS &amp; ACTIVITIES</span>
-          <h2 data-scramble>Beyond<br />the code.</h2>
-        </header>
-        <ul className="award-list">
-          {awards.filter((a) => !a.code).map((a, i) => (
-            <li className="award" key={a.title} data-reveal style={{ "--i": i } as React.CSSProperties}>
-              <a href={a.href}>
-                <span className="award-year">{a.year}</span>
-                <span className="award-title">{a.title}</span>
-                <span className="award-note">{a.note}</span>
-                <span className="award-kind">{a.kind}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <footer className="footer">
-        <p>GOT AN IDEA?</p><h2 data-reveal data-scramble>Let&apos;s build<br />something.</h2>
-        <div><span>AADITYA SHAH / 2026</span><a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GITHUB ↗</a><a href="#top">BACK TO TOP ↑</a></div>
-      </footer>
+          <a href="#top">Top ↑</a>
+          <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode">☾</button>
+          <span>© 2026</span>
+        </footer>
+      </div>
     </main>
   );
 }
