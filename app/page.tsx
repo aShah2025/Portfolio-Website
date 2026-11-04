@@ -188,15 +188,6 @@ function Typer() {
 // A text progress bar: [#######---]
 const bar = (done: number, of: number) => `[${"#".repeat(done)}${"-".repeat(of - done)}]`;
 
-function useTheme() {
-  const toggle = () => {
-    const root = document.documentElement;
-    const dark = root.dataset.theme ? root.dataset.theme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.dataset.theme = dark ? "light" : "dark";
-    try { localStorage.setItem("theme", root.dataset.theme); } catch { /* private mode: the choice just isn't remembered */ }
-  };
-  return toggle;
-}
 
 function PianoControls() {
   const [, rerender] = useState(0);
@@ -227,7 +218,6 @@ export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
   const stunt = useRef(0);
   const focus = useRef<string | null>(null); // the open row, whose scene the plane canvas shows
-  const toggleTheme = useTheme();
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
     id: p.id, name: p.name, meta: p.tag,
@@ -402,7 +392,6 @@ export default function Home() {
           <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
           <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume ↗</a>
           <a href="#top">Top ↑</a>
-          <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode">☾</button>
           <span>© 2026</span>
         </footer>
       </div>

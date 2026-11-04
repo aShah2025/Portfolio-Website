@@ -70,7 +70,7 @@ function buildPlane(THREE: T) {
     const m = new THREE.Mesh(g, skin); m.castShadow = true; return m;
   };
   const rod = (a: number[], b: number[], r: number, m: THREE_NS.Material) => {
-    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 10), m);
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 20), m);
     o.position.copy(A).add(B).multiplyScalar(0.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); return o;
   };
 
@@ -82,13 +82,13 @@ function buildPlane(THREE: T) {
     [-2.1, 0.56, 0.57, 0], [-1.75, 0.57, 0.63, 0.07], [-1.3, 0.58, 0.72, 0.16], [-0.75, 0.58, 0.78, 0.21], [0.55, 0.57, 0.77, 0.2],
     [1.15, 0.5, 0.64, 0.19], [2.0, 0.38, 0.49, 0.19], [3.0, 0.26, 0.35, 0.21], [4.0, 0.16, 0.25, 0.25], [4.72, 0.07, 0.15, 0.3],
   ];
-  const SEG = 64;
+  const SEG = 128;
   const lerpStation = (z: number) => {
     let i = 0; while (i < stations.length - 2 && stations[i + 1][0] < z) i++;
     const [z0, ...a] = stations[i], [z1, ...b] = stations[i + 1], t = Math.min(1, Math.max(0, (z - z0) / (z1 - z0))), e = t * t * (3 - 2 * t);
     return [z, ...a.map((v, k) => v + (b[k] - v) * (k < 2 ? e : t))] as [number, number, number, number];
   };
-  const fine = Array.from({ length: 240 }, (_, i) => lerpStation(stations[0][0] + (i / 239) * (stations[stations.length - 1][0] - stations[0][0])));
+  const fine = Array.from({ length: 600 }, (_, i) => lerpStation(stations[0][0] + (i / 599) * (stations[stations.length - 1][0] - stations[0][0])));
   const fuseRings = fine.map(([z, w, h, cy]) => Array.from({ length: SEG }, (_, k) => {
     const a = (k / SEG) * TAU, cs = Math.cos(a), sn = Math.sin(a), e = 2 / 2.7;
     return new THREE.Vector3(w * Math.sign(cs) * Math.abs(cs) ** e, cy + h * Math.sign(sn) * Math.abs(sn) ** e, z);
@@ -113,7 +113,7 @@ function buildPlane(THREE: T) {
   }));
 
   // wing: NACA 2412 sections, constant chord inboard then tapering, 1.7° dihedral, on top of the cabin
-  const foil = naca(0.12, 0.02, 0.4, 24);
+  const foil = naca(0.12, 0.02, 0.4, 64);
   const wingRing = (x: number, chord: number, zLE: number, y: number, t = 1) => foil.map(([u, v]) => new THREE.Vector3(x, y + v * chord * t, zLE + u * chord));
   const wingSpan = [-5.5, -5.35, ...Array.from({ length: 43 }, (_, i) => -5.25 + i * 0.25), 5.35, 5.5];
   plane.add(loft(wingSpan.map((x) => {
@@ -128,17 +128,18 @@ function buildPlane(THREE: T) {
   }));
   // wingtip navigation lights: red on the left, green on the right
   for (const [x, col] of [[-5.52, "#ff2a2a"], [5.52, "#2aff6a"]] as const) {
-    const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshBasicMaterial({ color: col })); l.position.set(x, 1.15, -0.85); plane.add(l);
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 14), new THREE.MeshBasicMaterial({ color: col })); l.position.set(x, 1.15, -0.85); plane.add(l);
   }
 
   // tail: tapered horizontal stabiliser with an elevator seam, a swept fin carrying the swoosh, and the dorsal
   // fillet that runs forward from the fin along the top of the tail cone
-  const tfoil = naca(0.09, 0, 0, 16);
+  const tfoil = naca(0.09, 0, 0, 90);
   plane.add(loft([-1.75, -0.2, 0.2, 1.75].map((x) => {
     const chord = Math.abs(x) < 1 ? 0.85 : 0.55;
     return tfoil.map(([u, v]) => new THREE.Vector3(x, 0.32 + v * chord, 4.0 + (0.85 - chord) * 0.6 + u * chord));
   }), (p) => (p.z > 4.42 && p.z < 4.46 && Math.abs(p.x) > 0.2 ? SEAM : BODY)));
-  const finY = [0.3, 0.6, 0.9, 1.15, 1.4, 1.5, 1.62, 1.75];
+  // many thin slices so the slanted swoosh and pinstripe come out as clean lines
+  const finY = Array.from({ length: 60 }, (_, i) => 0.3 + (i / 59) * 1.45);
   plane.add(loft(finY.map((y) => {
     const k = (y - 0.3) / 1.45, chord = 1.25 - k * 0.68, zLE = 3.45 + k * 1.0;
     return tfoil.map(([u, v]) => new THREE.Vector3(v * chord, y, zLE + u * chord));
@@ -168,11 +169,11 @@ function buildPlane(THREE: T) {
   for (const s of [-1, 1]) {
     plane.add(rod([s * 0.5, -0.38, -0.35], [s * 2.6, 0.95, -0.55], 0.035, metal));
     plane.add(rod([s * 0.45, -0.5, 0.05], [s * 1.25, -1.15, 0.1], 0.045, metal));
-    const pant = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), plain(BODY)); pant.scale.set(0.7, 0.95, 2.1); pant.position.set(s * 1.27, -1.2, 0.08); plane.add(pant);
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 18), tyre); wheel.rotation.z = Math.PI / 2; wheel.position.set(s * 1.27, -1.28, 0.08); plane.add(wheel);
+    const pant = new THREE.Mesh(new THREE.SphereGeometry(0.22, 40, 28), plain(BODY)); pant.scale.set(0.7, 0.95, 2.1); pant.position.set(s * 1.27, -1.2, 0.08); plane.add(pant);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 40), tyre); wheel.rotation.z = Math.PI / 2; wheel.position.set(s * 1.27, -1.28, 0.08); plane.add(wheel);
   }
   plane.add(rod([0, -0.45, -2.35], [0, -1.2, -2.4], 0.04, metal));
-  const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 18), tyre); nose.rotation.z = Math.PI / 2; nose.position.set(0, -1.25, -2.4); plane.add(nose);
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 40), tyre); nose.rotation.z = Math.PI / 2; nose.position.set(0, -1.25, -2.4); plane.add(nose);
 
   // two-blade prop with painted tips, plus the faint disc a spinning prop leaves in a photo
   const prop = new THREE.Group(); prop.position.z = -3.05; plane.add(prop);
@@ -240,8 +241,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       if (disposed) return;
 
       const gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
-      gl.setPixelRatio(1);
-      const rt = new THREE.WebGLRenderTarget(1, 1);
+      const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4 });
       const scene = new THREE.Scene();
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
       scene.environment = new THREE.PMREMGenerator(gl).fromScene(new RoomEnvironment(), 0.04).texture;
@@ -267,12 +267,12 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const resize = () => {
         W = window.innerWidth; H = window.innerHeight; dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = W * dpr; canvas.height = H * dpr;
-        const size = W < 700 ? 9 : 11;
+        const size = W < 700 ? 7 : 8;
         font = `${size}px ${getComputedStyle(document.body).getPropertyValue("--font-geist-mono") || "monospace"}`;
         ctx.font = font; cw = ctx.measureText("M").width; ch = Math.round(size * 1.18);
         cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
         rt.setSize(cols, rows); buf = new Uint8Array(cols * rows * 4);
-        gl.setSize(W, H, false);
+        gl.setPixelRatio(dpr); gl.setSize(W, H, false);
         scene2d.width = cols; scene2d.height = rows;
         camera.aspect = (cols * cw) / (rows * ch); camera.updateProjectionMatrix();
         born = new Float32Array(cols * rows).map((_, i) => hash(i % cols, (i / cols) | 0));

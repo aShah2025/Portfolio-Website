@@ -1,14 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f6f7f9; --ink: #1b2433; --muted: #6b7584; --faint: #a3abb7; --line: rgba(27,36,51,.1);
-  --plane: #2f5d9b; --accent: #ff5a36;
-  color-scheme: light;
+  --paper: #0c0f14; --ink: #dfe4ec; --muted: #8b95a5; --faint: #3a4352; --line: rgba(223,228,236,.1);
+  --plane: #7aa2f7; --accent: #ff7a5c;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --paper: #0c0f14; --ink: #dfe4ec; --muted: #8b95a5; --faint: #3a4352; --line: rgba(223,228,236,.1); --plane: #7aa2f7; --accent: #ff7a5c; color-scheme: dark; }
-}
-:root[data-theme="dark"] { --paper: #0c0f14; --ink: #dfe4ec; --muted: #8b95a5; --faint: #3a4352; --line: rgba(223,228,236,.1); --plane: #7aa2f7; --accent: #ff7a5c; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--paper); }
