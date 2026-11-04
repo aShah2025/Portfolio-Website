@@ -336,6 +336,7 @@ export default function Home() {
 
   return (
     <main>
+      <link rel="preload" as="image" href="/images/piano-intro.webp" fetchPriority="high" />
       <AsciiPlane stunt={stunt} focus={focus} />
 
       <section className="intro" id="top">
