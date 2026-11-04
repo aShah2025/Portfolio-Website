@@ -62,7 +62,12 @@ main { position: relative; z-index: 1; }
 .project-list .body dd { margin: 0; color: var(--plane); }
 @keyframes open { from { opacity: 0; transform: translateY(-4px); } }
 
-.track { margin: 0 0 12px; font: 400 11px/1.6 var(--mono); color: var(--plane); white-space: pre; overflow-x: auto; }
+.langs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.langs li { padding: 3px 8px; border: 1px solid var(--line); border-radius: 3px; font: 400 11px/1.4 var(--mono); color: var(--plane); }
+.langs li.learning { border-style: dashed; color: var(--muted); }
+.langs small { font-size: 10px; color: var(--faint); }
+
+.track {margin: 0 0 12px; font: 400 11px/1.6 var(--mono); color: var(--plane); white-space: pre; overflow-x: auto; }
 
 .piano-ctl { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .piano-ctl button { font: 400 11px/1.4 var(--mono); color: var(--muted); text-align: left; }

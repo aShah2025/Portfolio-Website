@@ -119,6 +119,8 @@ const awards = [
   { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
 ];
 
+const LANGUAGES: [string, string?][] = [["Swift"], ["Python"], ["Java"], ["JavaScript"], ["HTML"], ["C++", "learning"]];
+
 const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
 
 // Types out each role, holds it, deletes it, and moves to the next, like someone at a terminal.
@@ -283,6 +285,13 @@ export default function Home() {
         </header>
 
         <section aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
+
+        <section aria-labelledby="h-lang">
+          <h3 id="h-lang">languages</h3>
+          <ul className="langs">
+            {LANGUAGES.map(([name, note]) => <li key={name} className={note ? "learning" : ""}>{name}{note && <small> {note}</small>}</li>)}
+          </ul>
+        </section>
         <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
 
         <section aria-labelledby="h-rec">
