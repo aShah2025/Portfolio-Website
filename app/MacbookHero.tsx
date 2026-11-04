@@ -68,13 +68,18 @@ function drawLegend(c: CanvasRenderingContext2D, k: Key, w: number, h: number) {
   const L = k.label.trim();
   c.fillStyle = "#fff"; c.textBaseline = "middle";
   const font = (px: number, weight = 400) => { c.font = `${weight} ${px}px -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif`; };
-  if (!L || L === "touchid") return;
+  if (L === "touchid") { c.strokeStyle = "rgba(255,255,255,.14)"; c.lineWidth = 2; c.beginPath(); c.roundRect(h * 0.08, h * 0.08, w - h * 0.16, h * 0.84, h * 0.12); c.stroke(); return; }
+  if (!L) return;
   if (L.includes("\n")) {
     const [a, b] = L.split("\n"); c.textAlign = "center"; font(h * 0.26);
     c.fillText(a, w / 2, h * 0.3); c.fillText(b, w / 2, h * 0.68); return;
   }
   if (L.length === 1) { c.textAlign = "center"; font(L.match(/[◀▲▼▶]/) ? h * 0.4 : h * 0.34); c.fillText(L, w / 2, h * 0.5); return; }
-  if (/^F\d+$/.test(L) || L === "esc") { c.textAlign = "center"; font(h * 0.36); c.fillText(L, w / 2, h * 0.52); return; }
+  if (L === "esc") { c.textAlign = "left"; font(h * 0.2); c.fillText("esc", h * 0.12, h * 0.8); return; }
+  if (/^F\d+$/.test(L)) {
+    fnIcon(c, Number(L.slice(1)), w / 2, h * 0.4, h * 0.62);
+    c.fillStyle = "#fff"; c.textAlign = "center"; font(h * 0.15); c.fillText(L, w / 2, h * 0.84); return;
+  }
   const sym: Record<string, string> = { command: "⌘", option: "⌥", control: "⌃", shift: "⇧", fn: "", tab: "⇥", "caps lock": "⇪", delete: "⌫", return: "⏎" };
   const right = k.label.endsWith(" ") || L === "delete" || L === "return";
   font(h * 0.17); c.textAlign = right ? "right" : "left";
@@ -211,12 +216,19 @@ function paintScreen(cv: HTMLCanvasElement, typed: number, unlocked: boolean, no
     c.font = `400 26px ${sys}`; c.fillStyle = "rgba(255,255,255,.5)"; c.fillText("Touch ID or Enter Password", w / 2, ay + 270);
   } else {
     // menu bar, dock and a terminal window
-    c.fillStyle = "rgba(20,20,30,.35)"; c.fillRect(0, 0, w, 58);
+    c.fillStyle = "rgba(20,20,30,.35)"; c.fillRect(0, 0, w, 66);
     c.fillStyle = "#fff"; c.font = `600 28px ${sys}`; c.textAlign = "left"; c.textBaseline = "middle";
-    c.fillText("Terminal", 240, 30); c.font = `400 28px ${sys}`; ["File", "Edit", "View", "Window"].forEach((m, i) => c.fillText(m, 400 + i * 110, 30));
-    c.textAlign = "right"; c.fillText(now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }), w - 40, 30);
-    c.fillStyle = "rgba(255,255,255,.18)"; c.beginPath(); c.roundRect(w / 2 - 420, h - 150, 840, 120, 34); c.fill();
-    ["#ff7a4a", "#6b9cff", "#8b7cff", "#5fd38a", "#f2c14e", "#e2e2e8"].forEach((col, i) => { c.fillStyle = col; c.beginPath(); c.roundRect(w / 2 - 380 + i * 130, h - 135, 90, 90, 22); c.fill(); });
+    c.fillText("Terminal", 240, 34); c.font = `400 28px ${sys}`; ["File", "Edit", "View", "Window"].forEach((m, i) => c.fillText(m, 400 + i * 110, 34));
+    c.textAlign = "right"; c.fillText(now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }), w - 40, 34);
+    const is = 92, step = 112, dw = DOCK.length * step + 24, dx = w / 2 - dw / 2;
+    c.fillStyle = "rgba(255,255,255,.18)"; c.beginPath(); c.roundRect(dx, h - 152, dw, 124, 36); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 2; c.stroke();
+    DOCK.forEach((app, i) => {
+      const ix = dx + 22 + i * step, iy = h - 142;
+      c.save(); c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 14; c.shadowOffsetY = 4; squircle(c, ix, iy, is, "rgba(0,0,0,.01)"); c.restore();
+      c.save(); APPS[app](c, ix, iy, is); c.restore();
+      if (app === "terminal") { c.fillStyle = "rgba(255,255,255,.8)"; c.beginPath(); c.arc(ix + is / 2, h - 38, 4, 0, Math.PI * 2); c.fill(); }
+    });
 
     const x = w * 0.2, y = h * 0.16, tw = w * 0.6, th = h * 0.6;
     c.shadowColor = "rgba(0,0,0,.55)"; c.shadowBlur = 80; c.shadowOffsetY = 30;
@@ -234,8 +246,125 @@ function paintScreen(cv: HTMLCanvasElement, typed: number, unlocked: boolean, no
   }
 
   // the notch, with its camera
-  c.fillStyle = "#000"; c.beginPath(); c.roundRect(w / 2 - 95, -20, 190, 58, 16); c.fill();
-  c.fillStyle = "#0e1220"; c.beginPath(); c.arc(w / 2, 18, 7, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#000"; c.beginPath(); c.roundRect(w / 2 - 102, -24, 204, 90, 20); c.fill();
+  c.fillStyle = "#0e1220"; c.beginPath(); c.arc(w / 2, 28, 8, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#1c2440"; c.beginPath(); c.arc(w / 2 - 2, 26, 3, 0, Math.PI * 2); c.fill();
+}
+
+// Simplified dock icons for the apps on the desktop, each drawn in a size x size box at (x, y).
+const squircle = (c: CanvasRenderingContext2D, x: number, y: number, s: number, fill: string | CanvasGradient) => { c.fillStyle = fill; c.beginPath(); c.roundRect(x, y, s, s, s * 0.23); c.fill(); };
+const APPS: Record<string, (c: CanvasRenderingContext2D, x: number, y: number, s: number) => void> = {
+  discord: (c, x, y, s) => {
+    squircle(c, x, y, s, "#5865f2");
+    const cx = x + s / 2, cy = y + s * 0.52;
+    c.fillStyle = "#fff"; c.beginPath();
+    c.moveTo(cx - s * 0.3, cy + s * 0.14); c.quadraticCurveTo(cx - s * 0.33, cy - s * 0.12, cx - s * 0.2, cy - s * 0.24);
+    c.quadraticCurveTo(cx, cy - s * 0.3, cx + s * 0.2, cy - s * 0.24); c.quadraticCurveTo(cx + s * 0.33, cy - s * 0.12, cx + s * 0.3, cy + s * 0.14);
+    c.quadraticCurveTo(cx + s * 0.2, cy + s * 0.24, cx + s * 0.12, cy + s * 0.2); c.lineTo(cx + s * 0.08, cy + s * 0.13);
+    c.quadraticCurveTo(cx, cy + s * 0.16, cx - s * 0.08, cy + s * 0.13); c.lineTo(cx - s * 0.12, cy + s * 0.2);
+    c.quadraticCurveTo(cx - s * 0.2, cy + s * 0.24, cx - s * 0.3, cy + s * 0.14); c.fill();
+    c.fillStyle = "#5865f2";
+    for (const d of [-1, 1]) { c.beginPath(); c.ellipse(cx + d * s * 0.1, cy - s * 0.01, s * 0.045, s * 0.055, 0, 0, Math.PI * 2); c.fill(); }
+  },
+  chrome: (c, x, y, s) => {
+    squircle(c, x, y, s, "#f4f4f6");
+    const cx = x + s / 2, cy = y + s / 2, r = s * 0.36;
+    ["#ea4335", "#fbbc05", "#34a853"].forEach((col, i) => {
+      const a0 = -Math.PI * 5 / 6 + i * (Math.PI * 2 / 3);
+      c.fillStyle = col; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, a0, a0 + Math.PI * 2 / 3); c.closePath(); c.fill();
+    });
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(cx, cy, r * 0.48, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#4285f4"; c.beginPath(); c.arc(cx, cy, r * 0.38, 0, Math.PI * 2); c.fill();
+  },
+  claude: (c, x, y, s) => {
+    squircle(c, x, y, s, "#d97757");
+    const cx = x + s / 2, cy = y + s / 2; c.strokeStyle = "#fff"; c.lineCap = "round";
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.2, len = s * (i % 3 === 0 ? 0.3 : i % 2 ? 0.24 : 0.27);
+      c.lineWidth = s * 0.06; c.beginPath(); c.moveTo(cx + Math.cos(a) * s * 0.04, cy + Math.sin(a) * s * 0.04); c.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len); c.stroke();
+    }
+  },
+  terminal: (c, x, y, s) => {
+    const g = c.createLinearGradient(x, y, x, y + s); g.addColorStop(0, "#3a3a3e"); g.addColorStop(1, "#1a1a1c"); squircle(c, x, y, s, g);
+    c.fillStyle = "#0e0e10"; c.beginPath(); c.roundRect(x + s * 0.12, y + s * 0.16, s * 0.76, s * 0.68, s * 0.08); c.fill();
+    c.fillStyle = "#e9e9ee"; c.font = `700 ${s * 0.3}px ui-monospace, Menlo, monospace`; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText(">_", x + s * 0.2, y + s * 0.42);
+  },
+  safari: (c, x, y, s) => {
+    squircle(c, x, y, s, "#f4f4f6");
+    const cx = x + s / 2, cy = y + s / 2, r = s * 0.37, g = c.createLinearGradient(cx, cy - r, cx, cy + r);
+    g.addColorStop(0, "#1ec8ff"); g.addColorStop(1, "#1a6dff"); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 1.5;
+    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; c.beginPath(); c.moveTo(cx + Math.cos(a) * r * 0.82, cy + Math.sin(a) * r * 0.82); c.lineTo(cx + Math.cos(a) * r * 0.92, cy + Math.sin(a) * r * 0.92); c.stroke(); }
+    const a = -Math.PI / 4, dx = Math.cos(a), dy = Math.sin(a), nx = -dy * r * 0.12, ny = dx * r * 0.12;
+    c.fillStyle = "#ff3b30"; c.beginPath(); c.moveTo(cx + dx * r * 0.75, cy + dy * r * 0.75); c.lineTo(cx + nx, cy + ny); c.lineTo(cx - nx, cy - ny); c.fill();
+    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(cx - dx * r * 0.75, cy - dy * r * 0.75); c.lineTo(cx + nx, cy + ny); c.lineTo(cx - nx, cy - ny); c.fill();
+  },
+  settings: (c, x, y, s) => {
+    const g = c.createLinearGradient(x, y, x, y + s); g.addColorStop(0, "#c9c9ce"); g.addColorStop(1, "#7d7d84"); squircle(c, x, y, s, g);
+    const cx = x + s / 2, cy = y + s / 2;
+    c.fillStyle = "#3d3d42"; c.beginPath();
+    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2, rr = i % 2 ? s * 0.3 : s * 0.36; c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+    c.fill(); c.fillStyle = "#a8a8ae"; c.beginPath(); c.arc(cx, cy, s * 0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#3d3d42"; c.beginPath(); c.arc(cx, cy, s * 0.08, 0, Math.PI * 2); c.fill();
+  },
+  xcode: (c, x, y, s) => {
+    const g = c.createLinearGradient(x, y, x, y + s); g.addColorStop(0, "#2f9bff"); g.addColorStop(1, "#1458d8"); squircle(c, x, y, s, g);
+    c.strokeStyle = "rgba(255,255,255,.25)"; c.lineWidth = 1;
+    for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(x + (s * i) / 6, y + s * 0.1); c.lineTo(x + (s * i) / 6, y + s * 0.9); c.stroke(); c.beginPath(); c.moveTo(x + s * 0.1, y + (s * i) / 6); c.lineTo(x + s * 0.9, y + (s * i) / 6); c.stroke(); }
+    c.save(); c.translate(x + s / 2, y + s / 2); c.rotate(-Math.PI / 4);
+    c.fillStyle = "#e8e8ec"; c.fillRect(-s * 0.05, -s * 0.12, s * 0.1, s * 0.46);
+    c.fillStyle = "#a9adb7"; c.beginPath(); c.roundRect(-s * 0.24, -s * 0.28, s * 0.48, s * 0.16, s * 0.03); c.fill();
+    c.restore();
+  },
+  vscode: (c, x, y, s) => {
+    squircle(c, x, y, s, "#f4f4f6");
+    const ox = x + s * 0.16, oy = y + s * 0.14, u = s * 0.68;
+    c.fillStyle = "#0065a9"; c.beginPath(); c.moveTo(ox + u * 0.72, oy); c.lineTo(ox + u, oy + u * 0.12); c.lineTo(ox + u, oy + u * 0.88); c.lineTo(ox + u * 0.72, oy + u); c.closePath(); c.fill();
+    c.fillStyle = "#007acc"; c.beginPath(); c.moveTo(ox + u * 0.72, oy); c.lineTo(ox + u * 0.72, oy + u * 0.26); c.lineTo(ox + u * 0.28, oy + u * 0.6); c.lineTo(ox + u * 0.1, oy + u * 0.46); c.closePath(); c.fill();
+    c.fillStyle = "#1f9cf0"; c.beginPath(); c.moveTo(ox + u * 0.72, oy + u); c.lineTo(ox + u * 0.72, oy + u * 0.74); c.lineTo(ox + u * 0.28, oy + u * 0.4); c.lineTo(ox + u * 0.1, oy + u * 0.54); c.closePath(); c.fill();
+  },
+};
+const DOCK = ["discord", "chrome", "claude", "terminal", "safari", "xcode", "vscode", "settings"];
+
+// Media and system icons on the function row, in a box of size s centred at (cx, cy).
+function fnIcon(c: CanvasRenderingContext2D, n: number, cx: number, cy: number, s: number) {
+  c.strokeStyle = c.fillStyle = "#fff"; c.lineWidth = s * 0.07; c.lineCap = "round"; c.lineJoin = "round";
+  const tri = (x: number, dir: number, hh: number) => { c.beginPath(); c.moveTo(x, cy - hh); c.lineTo(x + dir * hh * 1.2, cy); c.lineTo(x, cy + hh); c.closePath(); c.fill(); };
+  const speaker = () => { const x = cx - s * 0.32; c.beginPath(); c.moveTo(x, cy - s * 0.1); c.lineTo(x + s * 0.12, cy - s * 0.1); c.lineTo(x + s * 0.28, cy - s * 0.25); c.lineTo(x + s * 0.28, cy + s * 0.25); c.lineTo(x + s * 0.12, cy + s * 0.1); c.lineTo(x, cy + s * 0.1); c.closePath(); c.fill(); };
+  const waves = (k: number) => { for (let i = 1; i <= k; i++) { c.beginPath(); c.arc(cx - s * 0.04, cy, s * (0.08 + i * 0.1), -0.8, 0.8); c.stroke(); } };
+  switch (n) {
+    case 1: case 2: {
+      const r = s * (n === 1 ? 0.1 : 0.13), ray = n === 1 ? s * 0.07 : s * 0.13;
+      c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; c.beginPath(); c.moveTo(cx + Math.cos(a) * (r + s * 0.07), cy + Math.sin(a) * (r + s * 0.07)); c.lineTo(cx + Math.cos(a) * (r + s * 0.07 + ray), cy + Math.sin(a) * (r + s * 0.07 + ray)); c.stroke(); }
+      break;
+    }
+    case 3: // mission control: a wide window under three small ones
+      c.lineWidth = s * 0.05;
+      c.strokeRect(cx - s * 0.32, cy - s * 0.02, s * 0.64, s * 0.26);
+      for (let i = -1; i <= 1; i++) c.strokeRect(cx + i * s * 0.22 - s * 0.085, cy - s * 0.26, s * 0.17, s * 0.15);
+      break;
+    case 4: // spotlight
+      c.beginPath(); c.arc(cx - s * 0.06, cy - s * 0.06, s * 0.17, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = s * 0.09; c.beginPath(); c.moveTo(cx + s * 0.07, cy + s * 0.07); c.lineTo(cx + s * 0.24, cy + s * 0.24); c.stroke();
+      break;
+    case 5: // dictation microphone
+      c.beginPath(); c.roundRect(cx - s * 0.08, cy - s * 0.3, s * 0.16, s * 0.34, s * 0.08); c.fill();
+      c.beginPath(); c.arc(cx, cy - s * 0.04, s * 0.17, 0.15, Math.PI - 0.15); c.stroke();
+      c.beginPath(); c.moveTo(cx, cy + s * 0.13); c.lineTo(cx, cy + s * 0.25); c.stroke();
+      break;
+    case 6: // do not disturb moon
+      c.beginPath(); c.arc(cx, cy, s * 0.24, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = "destination-out"; c.beginPath(); c.arc(cx + s * 0.13, cy - s * 0.1, s * 0.21, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = "source-over";
+      break;
+    case 7: tri(cx, -1, s * 0.15); tri(cx + s * 0.2, -1, s * 0.15); break;
+    case 8: tri(cx - s * 0.26, 1, s * 0.15); c.fillRect(cx + s * 0.06, cy - s * 0.15, s * 0.07, s * 0.3); c.fillRect(cx + s * 0.18, cy - s * 0.15, s * 0.07, s * 0.3); break;
+    case 9: tri(cx - s * 0.2, 1, s * 0.15); tri(cx, 1, s * 0.15); break;
+    case 10: speaker(); break;
+    case 11: speaker(); waves(1); break;
+    case 12: speaker(); waves(3); break;
+  }
 }
 
 export default function MacbookHero() {
