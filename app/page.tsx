@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
-import { TAKEOFF_MS, type FlightPhase, type FlightState } from "./flight";
 
 const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
 
@@ -161,29 +160,6 @@ const INFO: Record<string, Info> = {
 const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
 const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
-const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
-
-// Types out each role, holds it, deletes it, and moves to the next, like someone at a terminal.
-function Typer() {
-  const [text, setText] = useState(ROLES[0]);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let i = 0, n = ROLES[0].length, dir = -1, id = 0;
-    const tick = () => {
-      const word = ROLES[i];
-      n += dir;
-      setText(word.slice(0, n));
-      let wait = dir > 0 ? 70 : 35;
-      if (dir > 0 && n >= word.length) { dir = -1; wait = 1800; }
-      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % ROLES.length; wait = 300; }
-      id = window.setTimeout(tick, wait);
-    };
-    id = window.setTimeout(tick, 2200);
-    return () => clearTimeout(id);
-  }, []);
-  return <span className="typer">{text}<i aria-hidden="true" /></span>;
-}
-
 // A text progress bar: [#######---]
 const bar = (done: number, of: number) => `[${"#".repeat(done)}${"-".repeat(of - done)}]`;
 
@@ -212,64 +188,56 @@ function PianoControls() {
 }
 
 type Item = { id: string; name: string; meta: string; body: React.ReactNode };
+const TABS = ["home", "work", "about", "contact"] as const;
+type Panel = typeof TABS[number];
 
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
-  const [phase, setPhase] = useState<FlightPhase>("runway");
-  const [flightReady, setFlightReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<Panel>("home");
   const stunt = useRef(0);
   const focus = useRef<string | null>(null);
-  const flight = useRef<FlightState>({ phase: "runway", startedAt: 0 });
-  const onFlightReady = useCallback(() => setFlightReady(true), []);
 
-  const finishFlight = useCallback(() => {
-    flight.current.phase = "portfolio";
-    setPhase("portfolio");
-    window.history.replaceState(null, "", "#index");
-    window.scrollTo({ top: 0, behavior: "instant" });
-    requestAnimationFrame(() => document.getElementById("portfolio-title")?.focus({ preventScroll: true }));
-  }, []);
-
-  const takeOff = () => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finishFlight(); return; }
-    flight.current = { phase: "takeoff", startedAt: performance.now() };
-    setPhase("takeoff");
-  };
-
-  const replayFlight = useCallback(() => {
+  const activateTab = useCallback((tab: Panel) => {
     pianoPlayer.stop();
     focus.current = null;
     setOpenProject(null);
-    flight.current = { phase: "runway", startedAt: 0 };
-    setPhase("runway");
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    window.scrollTo({ top: 0, behavior: "instant" });
-    requestAnimationFrame(() => document.getElementById("enter-portfolio")?.focus({ preventScroll: true }));
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+    requestAnimationFrame(() => document.getElementById(`panel-${tab}`)?.scrollTo({ top: 0, behavior: "instant" }));
   }, []);
 
-  // Direct project links and reloads from the portfolio bypass the opening flight.
+  // Shared project links select the right panel and reveal their details inside it.
   useEffect(() => {
+    const projectIds = new Set(projects.map((project) => project.id));
+    const lifeIds = new Set(["flying", "debate", "kungfu", "piano"]);
+    let frame = 0;
     const followHash = () => {
-      const hash = window.location.hash;
-      if (hash === "#top") { if (flight.current.phase !== "runway") replayFlight(); return; }
-      if (!hash || flight.current.phase === "portfolio") return;
-      flight.current.phase = "portfolio";
-      setPhase("portfolio");
-      requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "instant" }));
+      const id = window.location.hash.slice(1);
+      const item = projectIds.has(id) || lifeIds.has(id);
+      const tab: Panel = projectIds.has(id) || id === "index" ? "work" : lifeIds.has(id) || id === "life" || id === "setup" ? "about" : TABS.includes(id as Panel) ? id as Panel : "home";
+      if (id !== "piano") pianoPlayer.stop();
+      setActiveTab(tab);
+      setOpenProject(item ? id : null);
+      focus.current = item && id !== "flying" ? id : null;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const panel = document.getElementById(`panel-${tab}`), target = item || id === "setup" ? document.getElementById(id) : null;
+        if (panel) panel.scrollTo({ top: target ? target.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 12 : 0, behavior: "instant" });
+      });
     };
     followHash();
     window.addEventListener("hashchange", followHash);
-    return () => window.removeEventListener("hashchange", followHash);
-  }, [replayFlight]);
+    return () => { window.removeEventListener("hashchange", followHash); cancelAnimationFrame(frame); };
+  }, []);
 
-  // The content remains reachable even if the graphics context is interrupted during takeoff.
-  useEffect(() => {
-    if (phase !== "takeoff") return;
-    const timer = window.setTimeout(finishFlight, TAKEOFF_MS + 700);
-    const skipWithEscape = (event: KeyboardEvent) => { if (event.key === "Escape") finishFlight(); };
-    window.addEventListener("keydown", skipWithEscape);
-    return () => { window.clearTimeout(timer); window.removeEventListener("keydown", skipWithEscape); };
-  }, [phase, finishFlight]);
+  const onTabKey = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const index = TABS.indexOf(activeTab);
+    const next = event.key === "ArrowRight" ? TABS[(index + 1) % TABS.length] : event.key === "ArrowLeft" ? TABS[(index + TABS.length - 1) % TABS.length] : event.key === "Home" ? TABS[0] : event.key === "End" ? TABS[TABS.length - 1] : null;
+    if (!next) return;
+    event.preventDefault();
+    activateTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
     id: p.id, name: p.name, meta: p.tag,
@@ -335,6 +303,7 @@ export default function Home() {
 
   const toggle = (id: string) => {
     const opening = openProject !== id;
+    if (openProject === "piano") pianoPlayer.stop();
     setOpenProject(opening ? id : null);
     focus.current = opening && id !== "flying" ? id : null;
     if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
@@ -372,14 +341,15 @@ export default function Home() {
 
   const list = (items: Item[]) => (
     <ul className="project-list">
-      {items.map((it) => {
+      {items.map((it, index) => {
         const isOpen = openProject === it.id;
         return (
           <li key={it.id} id={it.id} className={isOpen ? "open" : ""}>
             <button type="button" aria-expanded={isOpen} aria-controls={`${it.id}-body`} onClick={() => toggle(it.id)}>
-              <span className="dash" aria-hidden="true">—</span>
+              <span className="row-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
               <span className="name">{it.name}</span>
               <span className="meta">{it.meta}</span>
+              <span className="row-toggle" aria-hidden="true">{isOpen ? "−" : "+"}</span>
             </button>
             <div className="body" id={`${it.id}-body`} hidden={!isOpen}>{it.body}</div>
           </li>
@@ -389,74 +359,77 @@ export default function Home() {
   );
 
   return (
-    <main data-flight-phase={phase}>
-      <AsciiPlane stunt={stunt} focus={focus} flight={flight} onReady={onFlightReady} onFlightComplete={finishFlight} />
-      <noscript><style>{`.intro { display: none !important; } .index[hidden] { display: block !important; }`}</style></noscript>
+    <main id="top">
+      <AsciiPlane stunt={stunt} focus={focus} />
+      <noscript><style>{`html, body, main { height: auto !important; overflow: auto !important; } .workspace, .index { position: static !important; height: auto !important; } .panel[hidden] { display: block !important; } .project-list .body[hidden] { display: block !important; }`}</style></noscript>
+      <button className="skip-link" type="button" onClick={() => { activateTab("work"); requestAnimationFrame(() => document.getElementById("panel-work")?.focus()); }}>Skip to work</button>
 
-      <section className="intro" id="top" hidden={phase === "portfolio"} aria-labelledby="intro-title">
-        <div className="intro-copy-block">
-          <p className="flight-status" aria-live="polite">{phase === "takeoff" ? "Taking off…" : flightReady ? "Ready for takeoff" : "Preparing flight…"}</p>
-          <h1 id="intro-title">aaditya shah</h1>
-          <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
-          <div className="intro-actions">
-            <button id="enter-portfolio" className="enter-portfolio" type="button" disabled={!flightReady || phase === "takeoff"} onClick={takeOff}>{phase === "takeoff" ? "Taking off…" : "Enter portfolio"} <span aria-hidden="true">↗</span></button>
-            <button className="skip-intro" type="button" onClick={finishFlight}>Skip intro</button>
+      <header className="site-header">
+        <button className="wordmark" type="button" onClick={() => activateTab("home")}>aaditya shah</button>
+        <div className="tab-list" role="tablist" aria-label="Portfolio sections">
+          {TABS.map((tab) => <button key={tab} type="button" id={`tab-${tab}`} role="tab" aria-selected={activeTab === tab} aria-controls={`panel-${tab}`} tabIndex={activeTab === tab ? 0 : -1} onKeyDown={onTabKey} onClick={() => activateTab(tab)}>{tab}</button>)}
+        </div>
+      </header>
+
+      <div className="workspace">
+        <div className="index" id="index">
+          <div className="panel home-panel" id="panel-home" role="tabpanel" aria-labelledby="tab-home" tabIndex={0} hidden={activeTab !== "home"}>
+            <section className="intro" aria-labelledby="intro-title">
+              <p className="eyebrow">Student &amp; builder · San Jose, CA</p>
+              <h1 id="intro-title">aaditya shah<span>.</span></h1>
+              <p className="intro-deck">I build apps, games, websites, and whatever I want to learn next.</p>
+              <div className="intro-links"><button type="button" onClick={() => { activateTab("work"); requestAnimationFrame(() => document.getElementById("panel-work")?.focus()); }}>Explore my work <span aria-hidden="true">↗</span></button><a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume <span aria-hidden="true">↗</span></a></div>
+            </section>
+          </div>
+
+          <div className="panel" id="panel-work" role="tabpanel" aria-labelledby="tab-work" tabIndex={0} hidden={activeTab !== "work"}>
+            <section id="work" aria-labelledby="h-work"><div className="section-heading"><h2 id="h-work">Selected work</h2><span>2025—2026</span></div>{list(work)}</section>
+          </div>
+
+          <div className="panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about" tabIndex={0} hidden={activeTab !== "about"}>
+            <section id="life" aria-labelledby="h-life"><h2 className="panel-heading" id="h-life">A little about me</h2><p className="about-copy">I&apos;m a student at Leland High School. Away from a screen, I play piano, practice Kung Fu, debate, and think about learning to fly.</p>{list(life)}</section>
+            <section aria-labelledby="h-lang">
+              <h3 id="h-lang">languages</h3>
+              {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
+            </section>
+
+            <section id="setup" aria-labelledby="h-setup">
+              <h3 id="h-setup">setup</h3>
+              <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+              {chips(TOOLS)}
+            </section>
+
+            <section aria-labelledby="h-rec">
+              <h3 id="h-rec">recognition</h3>
+              <ul className="awards">
+                {awards.map((a) => (
+                  <li key={a.title}>
+                    <span className="yr">{a.year.toLowerCase()}</span>
+                    <span><b>{a.title}</b> <span className="note">{a.note}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <p className="aside">Congressional App Challenge 2025 recognition for Kura. Competing again in 2026 with Canary.</p>
+            </section>
+          </div>
+
+          <div className="panel contact-panel" id="panel-contact" role="tabpanel" aria-labelledby="tab-contact" tabIndex={0} hidden={activeTab !== "contact"}>
+            <section id="contact" aria-labelledby="h-hi">
+              <p className="eyebrow">Get in touch</p>
+              <h2 className="contact-title" id="h-hi">Let&apos;s build<br />something.</h2>
+              <p className="intro-deck">Got an idea? My code is on GitHub and my hackathon projects are on Devpost. I&apos;d love to hear what you&apos;re working on.</p>
+              <div className="intro-links"><a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a><a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a></div>
+            </section>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="index" id="index" hidden={phase !== "portfolio"}>
-        <nav className="portfolio-nav" aria-label="Portfolio sections">
-          <a href="#work">Work</a><a href="#setup">Setup</a><a href="#life">Life</a><a href="#contact">Contact</a>
-          <button type="button" onClick={replayFlight} aria-label="Return to the runway">Flight <span aria-hidden="true">↶</span></button>
-        </nav>
-        <header className="who">
-          <h2 id="portfolio-title" tabIndex={-1}>aaditya</h2>
-          <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
-          <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
-          <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
-        </header>
-
-        <section id="work" aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
-
-        <section aria-labelledby="h-lang">
-          <h3 id="h-lang">languages</h3>
-          {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
-        </section>
-
-        <section id="setup" aria-labelledby="h-setup">
-          <h3 id="h-setup">setup</h3>
-          <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-          {chips(TOOLS)}
-        </section>
-        <section id="life" aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
-
-        <section aria-labelledby="h-rec">
-          <h3 id="h-rec">recognition</h3>
-          <ul className="awards">
-            {awards.map((a) => (
-              <li key={a.title}>
-                <span className="yr">{a.year.toLowerCase()}</span>
-                <span><b>{a.title}</b> <span className="note">{a.note}</span></span>
-              </li>
-            ))}
-          </ul>
-          <p className="aside">Congressional App Challenge 2025 recognition for Kura. Competing again in 2026 with Canary.</p>
-        </section>
-
-        <section id="contact" aria-labelledby="h-hi">
-          <h3 id="h-hi">get in touch</h3>
-          <p>Got an idea? Let&apos;s build something. My code is on GitHub and my hackathon projects are on Devpost.</p>
-        </section>
-
-        <footer className="links">
+      <footer className="links">
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
           <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
           <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume ↗</a>
-          <button type="button" onClick={replayFlight}>Replay flight ↶</button>
           <span>© 2026</span>
-        </footer>
-      </div>
+      </footer>
     </main>
   );
 }
