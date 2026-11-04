@@ -9,6 +9,8 @@ const TAU = Math.PI * 2;
 // Dense to sparse: darker (shadowed) surfaces get heavier glyphs, lit ones lighter.
 const RAMP = "@%#*+=-:.";
 const SCRAMBLE = "/?<>%*#@+=:;";
+// Lighter ramp for the sky, so the ASCII painting reads as texture rather than a wall of characters.
+const SKY = "%*+=-:;,. ";
 const hash = (x: number, y: number) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
 const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function noise(x: number, y: number) {
@@ -139,11 +141,45 @@ function buildPlane(THREE: T) {
   return { plane, prop };
 }
 
+// A seeded random generator so the painting comes out the same on every visit.
+const seeded = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+// The backdrop for the painted intro: a sunset sky with a low sun, banks of soft cloud lit from below, and
+// thousands of faint brush strokes for texture.
+function paintSky(W: number, H: number) {
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d")!, rnd = seeded(7), u = Math.max(W, H) / 1400;
+  const g = c.createLinearGradient(0, 0, 0, H);
+  [[0, "#2c4a78"], [0.35, "#6f95c4"], [0.62, "#e7c39f"], [0.8, "#ef9f6e"], [1, "#a85a55"]].forEach(([o, col]) => g.addColorStop(o as number, col as string));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const sun = c.createRadialGradient(W * 0.2, H * 0.74, 0, W * 0.2, H * 0.74, W * 0.55);
+  sun.addColorStop(0, "rgba(255,226,170,.85)"); sun.addColorStop(0.15, "rgba(255,200,140,.45)"); sun.addColorStop(1, "rgba(255,180,120,0)");
+  c.fillStyle = sun; c.fillRect(0, 0, W, H);
+  const blob = (x: number, y: number, r: number, col: string, a: number) => {
+    const b = c.createRadialGradient(x, y, 0, x, y, r); b.addColorStop(0, `rgba(${col},${a})`); b.addColorStop(1, `rgba(${col},0)`);
+    c.save(); c.translate(x, y); c.scale(1.8, 0.7); c.translate(-x, -y); c.fillStyle = b; c.fillRect(x - r, y - r, r * 2, r * 2); c.restore();
+  };
+  for (let i = 0; i < 260; i++) {
+    const band = rnd() < 0.5 ? 0.3 : 0.62, x = rnd() * W, y = H * (band + (rnd() - 0.5) * 0.22), r = (40 + rnd() * 130) * u;
+    blob(x, y + r * 0.25, r, "120,70,100", 0.12 + rnd() * 0.1);
+    blob(x, y, r * 0.85, y > H * 0.5 ? "255,214,180" : "240,236,240", 0.18 + rnd() * 0.22);
+  }
+  c.lineCap = "round";
+  for (let i = 0; i < 9000; i++) {
+    const x = rnd() * W, y = rnd() * H, len = (6 + rnd() * 22) * u, a = (rnd() - 0.5) * 0.5;
+    c.strokeStyle = rnd() < 0.5 ? `rgba(255,245,230,${0.03 + rnd() * 0.05})` : `rgba(40,30,60,${0.02 + rnd() * 0.04})`;
+    c.lineWidth = (1 + rnd() * 3) * u;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); c.stroke();
+  }
+  return cv;
+}
+
 type Cell = [number, number, string];
 
 // The plane is rendered by three.js into a tiny offscreen target, one pixel per character cell, then read back
 // and redrawn as glyphs: shading picks the glyph, paint picks the colour. Clouds and wind streaks fill the sky.
-// On the intro it sits centred and large; scrolling past the intro moves it to the right of the content.
+// The intro opens as a full-colour painting of the plane at sunset that breaks apart into ASCII as you scroll;
+// after the intro the plane sits to the right of the content.
 export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -159,11 +195,12 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
       await document.fonts?.ready;
       if (disposed) return;
 
-      const gl = new THREE.WebGLRenderer({ alpha: true, antialias: false, canvas: document.createElement("canvas") });
+      const gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
+      gl.setPixelRatio(1);
       const rt = new THREE.WebGLRenderTarget(1, 1);
       const scene = new THREE.Scene();
-      scene.add(new THREE.HemisphereLight("#ffffff", "#b8c2cc", 1.3));
-      const sun = new THREE.DirectionalLight("#ffffff", 2.4); sun.position.set(-4, 8, 6); scene.add(sun);
+      scene.add(new THREE.HemisphereLight("#fff4e6", "#b89a8c", 1.3));
+      const sun = new THREE.DirectionalLight("#ffe2c0", 2.6); sun.position.set(-6, 7, 5); scene.add(sun);
       const { plane, prop } = buildPlane(THREE);
       const rig = new THREE.Group(); rig.add(plane); scene.add(rig);
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
@@ -171,6 +208,7 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
 
       let W = 0, H = 0, cw = 7, ch = 13, cols = 0, rows = 0, dpr = 1, font = "";
       let buf = new Uint8Array(0), born: Float32Array = new Float32Array(0);
+      let sky = document.createElement("canvas"), skyLum = new Float32Array(0), skyWarm = new Uint8Array(0);
       let colors = { ink: "#1b2433", plane: "#2f5d9b", accent: "#ff5a36", muted: "#9aa3b1" };
       const readColors = () => {
         const cs = getComputedStyle(document.documentElement);
@@ -185,8 +223,16 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
         ctx.font = font; cw = ctx.measureText("M").width; ch = Math.round(size * 1.18);
         cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
         rt.setSize(cols, rows); buf = new Uint8Array(cols * rows * 4);
+        gl.setSize(W, H, false);
         camera.aspect = (cols * cw) / (rows * ch); camera.updateProjectionMatrix();
         born = new Float32Array(cols * rows).map((_, i) => hash(i % cols, (i / cols) | 0));
+        // the painting, and its brightness and warmth sampled once per character cell for the ASCII version
+        sky = paintSky(W, H);
+        const small = document.createElement("canvas"); small.width = cols; small.height = rows;
+        const sc = small.getContext("2d", { willReadFrequently: true })!; sc.drawImage(sky, 0, 0, cols, rows);
+        const px = sc.getImageData(0, 0, cols, rows).data;
+        skyLum = new Float32Array(cols * rows); skyWarm = new Uint8Array(cols * rows);
+        for (let i = 0; i < cols * rows; i++) { const R = px[i * 4], G = px[i * 4 + 1], B = px[i * 4 + 2]; skyLum[i] = (0.3 * R + 0.59 * G + 0.11 * B) / 255; skyWarm[i] = R > B + 20 ? 1 : 0; }
         readColors();
       };
       resize();
@@ -199,16 +245,16 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       mq.addEventListener("change", readColors);
 
-      const t0 = performance.now();
-      let last = t0, time = 0, seen = stunt.current, stuntAt = -1e9;
+      let last = performance.now(), time = 0, seen = stunt.current, stuntAt = -1e9;
       const frame = (now: number) => {
         const dt = Math.min(0.05, (now - last) / 1000); last = now;
         time += reduced ? 0 : dt;
-        const intro = reduced ? 9 : (now - t0) / 1000;
         pointer.x += (pointer.tx - pointer.x) * 0.05; pointer.y += (pointer.ty - pointer.y) * 0.05;
 
-        // where the plane sits: centred on the intro, off to the right (or faded up top on phones) after it
-        const k = smooth(0, 1, window.scrollY / (H * 0.9));
+        // scroll drives three things: the painting breaking into ASCII (d), the ASCII painting fading to the
+        // plain sky (art), and the plane moving from the centre to beside the content (k)
+        const sy = window.scrollY / H;
+        const d = smooth(0.02, 0.5, sy), art = 1 - smooth(0.55, 1, sy), k = smooth(0, 1, sy / 0.9);
         const max = document.documentElement.scrollHeight - H;
         const p = max > 0 ? window.scrollY / max : 0;
         const halfH = Math.tan((camera.fov * Math.PI) / 360) * 30, halfW = halfH * camera.aspect;
@@ -225,44 +271,62 @@ export default function AsciiPlane({ stunt }: { stunt: { current: number } }) {
         plane.rotateZ(roll);
         prop.rotation.z += dt * 40;
 
-        gl.setRenderTarget(rt); gl.setClearColor(0x000000, 0); gl.clear(); gl.render(scene, camera);
+        gl.setClearColor(0x000000, 0);
+        gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
         gl.readRenderTargetPixels(rt, 0, 0, cols, rows, buf);
 
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        if (d < 1) {
+          gl.setRenderTarget(null); gl.clear(); gl.render(scene, camera);
+          ctx.globalAlpha = 1 - d;
+          ctx.drawImage(sky, 0, 0, W, H);
+          ctx.drawImage(gl.domElement, 0, 0, W, H);
+          ctx.globalAlpha = 1;
+        }
+
         const inkCells: Cell[] = [], planeCells: Cell[] = [], accentCells: Cell[] = [], skyCells: Cell[] = [];
+        const coolArt: Cell[] = [], warmArt: Cell[] = [];
         for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
           const i = r * cols + c, o = ((rows - 1 - r) * cols + c) * 4;
-          const reveal = 0.15 + born[i] * 1.1;
-          if (intro < reveal - 0.3) continue;
           const x = c * cw, y = r * ch;
+          // while the painting is fading out, cells flicker through random glyphs before settling
+          const settling = d < 1 && born[i] > d;
           if (buf[o + 3] > 40) {
-            if (intro < reveal) { planeCells.push([x, y, SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0]]); continue; }
             const R = buf[o], G = buf[o + 1], B = buf[o + 2], lum = (0.3 * R + 0.59 * G + 0.11 * B) / 255;
-            const g = RAMP[Math.min(RAMP.length - 1, Math.max(0, Math.floor((1 - Math.min(1, lum * 1.15)) * RAMP.length)))];
+            const g = settling ? SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0] : RAMP[Math.min(RAMP.length - 1, Math.max(0, Math.floor((1 - Math.min(1, lum * 1.15)) * RAMP.length)))];
             if (R > G * 1.6 && R > B * 1.8) accentCells.push([x, y, g]);
             else if (lum < 0.1) inkCells.push([x, y, "@"]);
             else planeCells.push([x, y, g]);
             continue;
           }
           if (wide && x < 480 * k) continue; // keep the sky out from behind the text column
-          const n = noise(c * 0.045 + time * 0.25, r * 0.11) * 0.65 + noise(c * 0.11 + time * 0.4, r * 0.27) * 0.35;
-          if (n > 0.66) skyCells.push([x, y, n > 0.72 ? ":" : "."]);
+          if (art > 0) {
+            const t = Math.min(1, Math.max(0, (skyLum[i] - 0.25) / 0.55));
+            const g = settling ? (Math.random() < 0.5 ? SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0] : "") : SKY[Math.floor((1 - t) * (SKY.length - 1))];
+            if (g) (skyWarm[i] ? warmArt : coolArt).push([x, y, g]);
+          }
+          if (art < 1) {
+            const n = noise(c * 0.045 + time * 0.25, r * 0.11) * 0.65 + noise(c * 0.11 + time * 0.4, r * 0.27) * 0.35;
+            if (n > 0.66) skyCells.push([x, y, n > 0.72 ? ":" : "."]);
+          }
         }
-        for (const st of streaks) {
+        if (art < 1) for (const st of streaks) {
           st.x += st.v * dt * (reduced ? 0 : 1);
           if (st.x > 1.1) { st.x = -0.1; st.y = Math.random(); }
           const c0 = Math.floor(st.x * cols), r0 = Math.floor(st.y * rows);
           for (let j = 0; j < st.len; j++) if (!(wide && (c0 - j) * cw < 480 * k)) skyCells.push([(c0 - j) * cw, r0 * ch, j === 0 ? "-" : "–"]);
         }
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, W, H);
         ctx.font = font; ctx.textBaseline = "top";
-        const draw = (cells: Cell[], color: string, alpha: number) => { ctx.globalAlpha = alpha; ctx.fillStyle = color; for (const [x, y, g] of cells) ctx.fillText(g, x, y); };
+        const draw = (cells: Cell[], color: string, alpha: number) => { if (alpha <= 0) return; ctx.globalAlpha = alpha; ctx.fillStyle = color; for (const [x, y, g] of cells) ctx.fillText(g, x, y); };
         const fade = wide ? 1 : 1 - k * 0.92;
-        draw(skyCells, colors.muted, 0.55);
-        draw(planeCells, colors.plane, fade);
-        draw(inkCells, colors.ink, fade);
-        draw(accentCells, colors.accent, fade);
+        draw(coolArt, colors.plane, art * d * 0.7);
+        draw(warmArt, colors.accent, art * d * 0.7);
+        draw(skyCells, colors.muted, 0.55 * (1 - art));
+        draw(planeCells, colors.plane, fade * d);
+        draw(inkCells, colors.ink, fade * d);
+        draw(accentCells, colors.accent, fade * d);
         ctx.globalAlpha = 1;
         raf = requestAnimationFrame(frame);
       };

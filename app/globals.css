@@ -23,6 +23,7 @@ main { position: relative; z-index: 1; }
 
 /* intro: the plane fills the screen, the name sits under it */
 .intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; text-align: center; }
+.intro > * { padding: 5px 9px; background: var(--paper); border-radius: 2px; }
 .intro h1 { margin: 0; font: 500 15px/1 var(--mono); letter-spacing: .02em; }
 .prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .1em; text-transform: uppercase; }
 .typer i, .prompt > i { display: inline-block; width: .6em; height: 1.1em; margin-left: 3px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
