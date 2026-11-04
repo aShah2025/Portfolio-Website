@@ -5,64 +5,70 @@ import { SCENES } from "./asciiScenes";
 import { disposeFlightModel, loadCessna172 } from "./cessna172";
 
 const TAU = Math.PI * 2;
-const AIRCRAFT_YAW = Math.PI / 2 + 0.68;
-const FRAME_MS = 1000 / 30;
-const RAMP = ".,:;i!+*#%@";
-const GLYPHS = [...new Set(RAMP)].join("");
-const smooth = (a: number, b: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-const seeded = (seed: number) => () => {
-  seed = (seed + 0x6d2b79f5) | 0;
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
 
-// A broad, quiet wash of sky. Its transparent edges meet the page without a rectangular backdrop.
-function paintSky(W: number, H: number, left: number, centerY: number, mobile: boolean) {
+// More light means more ink; at this scale the tonal colour and glyph density work together.
+const RAMP = ".,:;i!+*#%@";
+const SCRAMBLE = "/?<>%*#@+=:;";
+// Lighter ramp for the sky, so the ASCII painting reads as texture rather than a wall of characters.
+const SKY = "%*+=-:;,. ";
+const hash = (x: number, y: number) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function noise(x: number, y: number) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
+// A seeded random generator so the painting comes out the same on every visit.
+const seeded = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+// The backdrop for the painted intro: a sunset sky with a low sun, banks of soft cloud lit from below, and
+// thousands of faint brush strokes for texture.
+function paintSky(W: number, H: number) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const c = cv.getContext("2d")!, rnd = seeded(38), width = W - left;
-  const wash = (x: number, y: number, rx: number, ry: number, color: string, alpha: number) => {
-    c.save(); c.translate(x, y); c.scale(rx, ry);
-    const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
-    g.addColorStop(0, `rgba(${color},${alpha})`); g.addColorStop(0.55, `rgba(${color},${alpha * 0.66})`); g.addColorStop(1, `rgba(${color},0)`);
-    c.fillStyle = g; c.fillRect(-1, -1, 2, 2); c.restore();
+  const c = cv.getContext("2d")!, rnd = seeded(7), u = Math.max(W, H) / 1400;
+  const g = c.createLinearGradient(0, 0, 0, H);
+  [[0, "#2c4a78"], [0.35, "#6f95c4"], [0.62, "#e7c39f"], [0.8, "#ef9f6e"], [1, "#a85a55"]].forEach(([o, col]) => g.addColorStop(o as number, col as string));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const sun = c.createRadialGradient(W * 0.2, H * 0.74, 0, W * 0.2, H * 0.74, W * 0.55);
+  sun.addColorStop(0, "rgba(255,226,170,.85)"); sun.addColorStop(0.15, "rgba(255,200,140,.45)"); sun.addColorStop(1, "rgba(255,180,120,0)");
+  c.fillStyle = sun; c.fillRect(0, 0, W, H);
+  const blob = (x: number, y: number, r: number, col: string, a: number) => {
+    const b = c.createRadialGradient(x, y, 0, x, y, r); b.addColorStop(0, `rgba(${col},${a})`); b.addColorStop(1, `rgba(${col},0)`);
+    c.save(); c.translate(x, y); c.scale(1.8, 0.7); c.translate(-x, -y); c.fillStyle = b; c.fillRect(x - r, y - r, r * 2, r * 2); c.restore();
   };
-  const x = left + width * 0.52, height = mobile ? Math.min(H * 0.29, width * 0.67) : Math.min(H * 0.63, width * 0.85);
-  wash(x, centerY - height * 0.15, width * 0.8, height * 0.86, "152,184,195", 0.7);
-  wash(x + width * 0.2, centerY + height * 0.2, width * 0.7, height * 0.6, "229,208,175", 0.58);
-  wash(x - width * 0.22, centerY + height * 0.36, width * 0.5, height * 0.28, "218,229,225", 0.6);
-  for (let i = 0; i < 65; i++) {
-    const cx = left + width * (rnd() * 1.15 - 0.08);
-    const cy = centerY + (rnd() - 0.46) * height * 1.1;
-    const radius = width * (0.05 + rnd() * 0.17);
-    wash(cx, cy, radius * 1.6, radius * (0.18 + rnd() * 0.12), "249,246,235", 0.1 + rnd() * 0.27);
+  for (let i = 0; i < 260; i++) {
+    const band = rnd() < 0.5 ? 0.3 : 0.62, x = rnd() * W, y = H * (band + (rnd() - 0.5) * 0.22), r = (40 + rnd() * 130) * u;
+    blob(x, y + r * 0.25, r, "120,70,100", 0.12 + rnd() * 0.1);
+    blob(x, y, r * 0.85, y > H * 0.5 ? "255,214,180" : "240,236,240", 0.18 + rnd() * 0.22);
   }
-  // Keep the text side completely clear while allowing a soft edge on narrow screens.
-  c.globalCompositeOperation = "destination-in";
-  const mask = c.createLinearGradient(left - (mobile ? 50 : 40), 0, W, 0);
-  mask.addColorStop(0, "rgba(0,0,0,0)"); mask.addColorStop(mobile ? 0.12 : 0.08, "#000"); mask.addColorStop(0.94, "#000"); mask.addColorStop(1, "rgba(0,0,0,.75)");
-  c.fillStyle = mask; c.fillRect(0, 0, W, H);
+  c.lineCap = "round";
+  for (let i = 0; i < 9000; i++) {
+    const x = rnd() * W, y = rnd() * H, len = (6 + rnd() * 22) * u, a = (rnd() - 0.5) * 0.5;
+    c.strokeStyle = rnd() < 0.5 ? `rgba(255,245,230,${0.03 + rnd() * 0.05})` : `rgba(40,30,60,${0.02 + rnd() * 0.04})`;
+    c.lineWidth = (1 + rnd() * 3) * u;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); c.stroke();
+  }
   return cv;
 }
 
-type Props = {
-  stunt: { current: number };
-  focus: { current: string | null };
-};
+// Cache the tiny characters once at device resolution. Drawing atlas tiles avoids asking the browser to
+// shape tens of thousands of strings every frame as the denser grid animates.
+const GLYPHS = [...new Set(`${RAMP}${SCRAMBLE}${SKY}-|/\\_()`)].join("");
+const SAMPLE = 2;
+const FRAME_MS = 1000 / 30;
 
-export default function AsciiPlane({ stunt, focus }: Props) {
+export default function AsciiPlane({ stunt, focus }: { stunt: { current: number }; focus: { current: string | null } }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    delete canvas.dataset.ready; delete canvas.dataset.artState;
     let disposed = false, raf = 0;
-    const abort = new AbortController(), disposers: (() => void)[] = [];
+    const abort = new AbortController();
+    const disposers: (() => void)[] = [];
     const cleanup = () => { while (disposers.length) disposers.pop()!(); };
 
     const initialise = async () => {
@@ -77,230 +83,220 @@ export default function AsciiPlane({ stunt, focus }: Props) {
       let reduced = motion.matches;
       const gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
       disposers.push(() => gl.dispose());
-      gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.95;
-      // A single MSAA-resolved sample per character keeps the true 2px grid inexpensive.
+      gl.toneMapping = THREE.ACESFilmicToneMapping;
+      gl.toneMappingExposure = 0.95;
       const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4 });
-      rt.texture.colorSpace = THREE.SRGBColorSpace; rt.scissorTest = true;
       disposers.push(() => rt.dispose());
-      const scene = new THREE.Scene(), pmrem = new THREE.PMREMGenerator(gl), room = new RoomEnvironment();
+      rt.texture.colorSpace = THREE.SRGBColorSpace;
+      const scene = new THREE.Scene();
+      const pmrem = new THREE.PMREMGenerator(gl), room = new RoomEnvironment();
       let environment: ReturnType<typeof pmrem.fromScene>;
       try { environment = pmrem.fromScene(room, 0.04); }
       finally { room.dispose(); pmrem.dispose(); }
       disposers.push(() => environment.dispose());
-      scene.environment = environment.texture; scene.environmentIntensity = 0.55;
-      scene.add(new THREE.HemisphereLight("#edf2ef", "#9f8e75", 1.25));
-      const sun = new THREE.DirectionalLight("#fff0d8", 2.4); sun.position.set(-6, 9, 5); scene.add(sun);
-      const fill = new THREE.DirectionalLight("#bfd6df", 0.85); fill.position.set(5, 2, -6); scene.add(fill);
+      scene.environment = environment.texture;
+      scene.environmentIntensity = 0.5;
+      scene.add(new THREE.HemisphereLight("#e8f0ff", "#8e6c58", 1.0));
+      const sun = new THREE.DirectionalLight("#ffe2c0", 2.6); sun.position.set(-6, 7, 5); scene.add(sun);
+      const fill = new THREE.DirectionalLight("#a9c9ff", 0.8); fill.position.set(5, 2, -6); scene.add(fill);
       const rig = new THREE.Group(); rig.add(plane); scene.add(rig);
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-      camera.position.set(0, 6.4, 29.3); camera.lookAt(0, 0, 0);
-      camera.updateMatrixWorld();
-      const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-      const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-      const localBounds = new THREE.Box3().setFromObject(plane);
-      const corners = Array.from({ length: 8 }, (_, i) => new THREE.Vector3(i & 1 ? localBounds.max.x : localBounds.min.x, i & 2 ? localBounds.max.y : localBounds.min.y, i & 4 ? localBounds.max.z : localBounds.min.z));
-      const projected = new THREE.Vector3();
-      let W = 0, H = 0, cw = 0, ch = 0, cols = 0, rows = 0, dpr = 1, font = "", tileW = 0, tileH = 0, needsDraw = true;
-      let contentEdge = 0, gutter = 0, centerX = 0, centerY = 0, aircraftScale = 1, poseOffsetX = 0, poseOffsetY = 0;
-      let mobile = false;
-      const halfH = 8.5;
-      let halfW = 1;
+      const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+      camera.position.set(0, 7.2, 29.1); camera.lookAt(0, 0, 0);
+
+      let W = 0, H = 0, cw = 0, ch = 0, cols = 0, rows = 0, dpr = 1, font = "";
+      let tileW = 0, tileH = 0, sampleW = 0, sampleH = 0, needsDraw = true;
       let buf: Uint8Array<ArrayBuffer> = new Uint8Array(0);
       const scene2d = document.createElement("canvas"), sc2 = scene2d.getContext("2d", { willReadFrequently: true })!;
-      const clouds = document.createElement("canvas"), cloudCtx = clouds.getContext("2d")!;
+      const artCanvas = document.createElement("canvas"), artCtx = artCanvas.getContext("2d")!;
       const atlas = document.createElement("canvas"), ac = atlas.getContext("2d")!;
-      let shown = 0, sceneId = "", sky = document.createElement("canvas");
+      let scenePx: Uint8ClampedArray<ArrayBufferLike> = new Uint8ClampedArray(0), shown = 0, sceneId = "";
+      let sky = document.createElement("canvas");
+      let artReveal = -1, artLimit = -1;
       const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-      // White CAD surfaces become blue-grey ink; glazing remains dark and the supplied red livery survives.
-      let palette = ["#254652", "#294954", "#94352c", "#173744", "#a9bec2", "#294e65", "#94352c", "#0f2835"];
+      const rnd = seeded(21);
+      const streaks = Array.from({ length: 14 }, () => ({ x: rnd(), y: rnd(), len: 16 + rnd() * 35, v: 0.025 + rnd() * 0.035 }));
+      // Body paint has several tones, so windows, shadows, white skin, and red livery stay distinct.
+      let palette = ["#92abd2", "#e7eef8", "#ff876c", "#5d80b1", "#354154", "#7aa2f7", "#ff7a5c"];
       const glyphIndex = new Map([...GLYPHS].map((g, i) => [g, i]));
-      const glyph = (target: CanvasRenderingContext2D, x: number, y: number, g: string, tone: number) => {
-        const index = glyphIndex.get(g);
-        if (index === undefined) return;
-        target.drawImage(atlas, index * tileW, tone * tileH, tileW, tileH, x, y, tileW / dpr, tileH / dpr);
-      };
       const buildAtlas = () => {
         atlas.width = tileW * GLYPHS.length; atlas.height = tileH * palette.length;
         ac.setTransform(dpr, 0, 0, dpr, 0, 0); ac.font = font; ac.textBaseline = "middle";
-        palette.forEach((color, tone) => {
-          ac.fillStyle = color;
+        palette.forEach((colour, tone) => {
+          ac.fillStyle = colour;
           for (let i = 0; i < GLYPHS.length; i++) ac.fillText(GLYPHS[i], i * tileW / dpr, (tone + 0.5) * tileH / dpr);
         });
-        // Tiny letters lose most of their ink to antialiasing; strengthen coverage without
-        // enlarging the glyphs, changing their grid, or expanding their existing edges.
-        const ink = ac.getImageData(0, 0, atlas.width, atlas.height);
-        for (let i = 3; i < ink.data.length; i += 4) ink.data[i] = Math.min(255, Math.round(ink.data[i] * 2.2));
-        ac.putImageData(ink, 0, 0);
       };
-      const paintClouds = () => {
-        clouds.width = canvas.width; clouds.height = canvas.height;
-        cloudCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const start = Math.max(0, contentEdge - 30), rnd = seeded(17), verticalSpan = H * (mobile ? 0.2 : 0.42);
-        // Cache only sparse 2px marks. The atmosphere stays quieter than the aircraft itself.
-        for (let y = Math.max(0, centerY - verticalSpan); y < Math.min(H, centerY + verticalSpan); y += 7) {
-          for (let x = start; x < W - gutter * 0.3; x += 6) {
-            const nx = (x - centerX) / Math.max(1, (W - contentEdge) * 0.5);
-            const ny = (y - centerY) / verticalSpan;
-            const envelope = Math.max(0, 1 - nx * nx - ny * ny);
-            if (rnd() < envelope * 0.26) glyph(cloudCtx, x, y, rnd() > 0.86 ? ":" : ".", 4);
-          }
-        }
+      const glyph = (target: CanvasRenderingContext2D, x: number, y: number, g: string, tone: number) => {
+        const index = glyphIndex.get(g);
+        if (index === undefined || g === " ") return;
+        target.drawImage(atlas, index * tileW, tone * tileH, tileW, tileH, x, y, tileW / dpr, tileH / dpr);
       };
       const readColors = () => {
         const cs = getComputedStyle(document.documentElement);
-        palette = [palette[0], palette[1], palette[2], palette[3], palette[4], cs.getPropertyValue("--plane").trim() || palette[5], palette[6], palette[7]];
-        buildAtlas(); paintClouds(); needsDraw = true;
-      };
-      const fitAircraft = () => {
-        rig.position.set(0, 0, 0); rig.scale.setScalar(1);
-        plane.rotation.set(0.035, AIRCRAFT_YAW, -0.035, "YXZ"); prop.rotation.z = 0.35; rig.updateMatrixWorld(true);
-        let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-        // Fit the actual assembly once on resize. Rotating its axis-aligned box substantially
-        // overestimates the wings and fuselage together and makes the visible aircraft too small.
-        plane.traverse((object) => {
-          if (!(object instanceof THREE.Mesh)) return;
-          const positions = object.geometry.getAttribute("position");
-          if (!positions) return;
-          for (let i = 0; i < positions.count; i++) {
-            projected.fromBufferAttribute(positions, i).applyMatrix4(object.matrixWorld).project(camera);
-            const x = (projected.x * 0.5 + 0.5) * W, y = (-projected.y * 0.5 + 0.5) * H;
-            left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
-          }
-        });
-        const width = mobile ? W * 0.92 : (W - contentEdge - gutter * 0.4) * 0.91;
-        const height = mobile ? Math.min(H * 0.23, W * 0.5) : H * 0.56;
-        aircraftScale = Math.min(width / (right - left), height / (bottom - top));
-        poseOffsetX = ((left + right) / W - 1) * halfW * aircraftScale;
-        poseOffsetY = (1 - (top + bottom) / H) * halfH * aircraftScale;
+        palette = [palette[0], palette[1], cs.getPropertyValue("--accent").trim() || palette[2], palette[3], cs.getPropertyValue("--faint").trim() || palette[4], cs.getPropertyValue("--plane").trim() || palette[5], cs.getPropertyValue("--accent").trim() || palette[6]];
+        buildAtlas(); artReveal = -1; needsDraw = true;
       };
       const resize = () => {
-        W = window.innerWidth; H = window.innerHeight; mobile = W < 760;
-        const content = document.querySelector(".index")?.getBoundingClientRect();
-        gutter = mobile ? 20 : content?.left || Math.max(24, Math.min(80, W * 0.05));
-        contentEdge = mobile ? 0 : Math.min(W * 0.65, (content?.right || gutter + Math.min(W * 0.42, 560)) + 32);
-        centerX = mobile ? W * 0.5 : (contentEdge + W - gutter * 0.4) * 0.5;
-        centerY = H * (mobile ? 0.28 : 0.48);
-        dpr = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(8_000_000 / (W * H)));
+        W = window.innerWidth; H = window.innerHeight; dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-        // Ordinary desktop and mobile displays use actual 2px letters; cap cells on very large displays.
-        const size = Math.max(2, W / 2400 * 2, H / 1800 * 2);
-        font = `700 ${size}px ${getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "monospace"}`;
+        // Half the old glyph height gives about four times as many independently shaded cells.
+        // Keep a bounded grid on very large displays instead of silently making ordinary screens coarse.
+        const size = Math.max(W < 700 ? 3.75 : 4, W / 1900 * 4, Math.sqrt(W * H / 170000) / 0.85);
+        font = `500 ${size}px ${getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "monospace"}`;
         ctx.font = font; cw = ctx.measureText("M").width; ch = size * 1.22;
         tileW = Math.ceil(cw * dpr); tileH = Math.ceil(ch * dpr);
-        cols = Math.ceil(W / cw); rows = Math.ceil(H / ch); rt.setSize(cols, rows);
+        cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
+        sampleW = cols * SAMPLE; sampleH = rows * SAMPLE;
+        rt.setSize(sampleW, sampleH); buf = new Uint8Array(sampleW * sampleH * 4);
         gl.setPixelRatio(dpr); gl.setSize(W, H, false);
-        halfW = halfH * W / H;
-        camera.left = -halfW; camera.right = halfW; camera.top = halfH; camera.bottom = -halfH; camera.updateProjectionMatrix();
-        fitAircraft(); sky = paintSky(W, H, contentEdge, centerY, mobile); readColors();
+        scene2d.width = cols; scene2d.height = rows;
+        artCanvas.width = canvas.width; artCanvas.height = canvas.height;
+        camera.aspect = W / H; camera.updateProjectionMatrix();
+        sky = paintSky(W, H);
+        readColors(); artReveal = -1; artLimit = -1;
       };
       resize();
 
+      const paintAsciiSky = (reveal: number, limit: number) => {
+        const step = Math.round(reveal * 24), clip = Math.round(limit / 8) * 8;
+        if (step === artReveal && clip === artLimit) return;
+        artReveal = step; artLimit = clip;
+        artCtx.setTransform(dpr, 0, 0, dpr, 0, 0); artCtx.clearRect(0, 0, W, H);
+        sc2.setTransform(1, 0, 0, 1, 0, 0); sc2.clearRect(0, 0, cols, rows); sc2.drawImage(sky, 0, 0, cols, rows);
+        const px = sc2.getImageData(0, 0, cols, rows).data;
+        for (let r = 0; r < rows; r++) for (let c = Math.ceil(clip / cw); c < cols; c++) {
+          const i = (r * cols + c) * 4, lum = (0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2]) / 255;
+          const settling = hash(c, r) > reveal;
+          const g = settling ? (hash(c + step, r) > 0.55 ? SCRAMBLE[(hash(c, r + step) * SCRAMBLE.length) | 0] : " ") : SKY[Math.min(SKY.length - 1, Math.floor((1 - Math.min(1, Math.max(0, (lum - 0.25) / 0.55))) * (SKY.length - 1)))];
+          glyph(artCtx, c * cw, r * ch, g, px[i] > px[i + 2] + 20 ? 6 : 5);
+        }
+      };
+
       const onMove = (e: PointerEvent) => { pointer.tx = e.clientX / W - 0.5; pointer.ty = e.clientY / H - 0.5; };
       const onMotion = () => { reduced = motion.matches; needsDraw = true; };
-      const observer = new MutationObserver(readColors); observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-      disposers.push(() => observer.disconnect());
-      let last = performance.now(), drawnAt = -Infinity, time = 0, propAngle = 0.35, seen = stunt.current, stuntAt = -1e9;
-      let previousFocus: string | null = null, firstRenderedAt = -1, artState = "";
+      const mo = new MutationObserver(readColors);
+      disposers.push(() => mo.disconnect());
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      let last = performance.now(), drawnAt = -Infinity, time = 0, seen = stunt.current, stuntAt = -1e9;
+      let previousScroll = -1, previousFocus: string | null = null;
       const frame = (now: number) => {
         if (disposed) return;
         raf = requestAnimationFrame(frame);
-        if (document.hidden || now - drawnAt < FRAME_MS - 0.1) return;
+        if (document.hidden || now - drawnAt < FRAME_MS) return;
         const dt = Math.min(0.05, (now - last) / 1000); last = now;
         drawnAt = now - (Number.isFinite(drawnAt) ? (now - drawnAt) % FRAME_MS : 0);
-        const changed = focus.current !== previousFocus;
-        if (!changed && !needsDraw && reduced) return;
-        previousFocus = focus.current; needsDraw = false;
+        const introTop = document.getElementById("top")?.offsetTop ?? 0;
+        if (window.scrollY < introTop - H) return;
+        if (reduced && previousScroll === window.scrollY && previousFocus === focus.current && !needsDraw) return;
+        previousScroll = window.scrollY; previousFocus = focus.current; needsDraw = false;
         time += reduced ? 0 : dt;
         const follow = 1 - Math.exp(-dt * 5);
         pointer.x += (pointer.tx - pointer.x) * follow; pointer.y += (pointer.ty - pointer.y) * follow;
-        // Start the one-time dissolve only after a complete color frame has reached the canvas.
-        const d = reduced ? 1 : smooth(500, 1400, firstRenderedAt < 0 ? 0 : now - firstRenderedAt);
+        const y = Math.max(0, window.scrollY - introTop), sy = y / H;
+        // The opening remains a normal, full resolution 3D flight. Only the transition and technical
+        // section use the fine ASCII grid.
+        const d = smooth(0.02, 0.5, sy), art = 1 - smooth(0.55, 1, sy), k = smooth(0, 1, sy / 0.9);
+        const max = document.documentElement.scrollHeight - H - introTop, p = max > 0 ? y / max : 0;
+        const halfH = Math.tan(camera.fov * Math.PI / 360) * 30, halfW = halfH * camera.aspect, wide = W >= 900;
+        const span = Math.min(halfW * 2 * (wide ? 0.7 : 0.96), halfH * 2 * 1.25);
+        // Reserve the actual text column rather than a fixed 480px cutout on every desktop size.
+        const textEdge = wide ? Math.min(440, W * 0.39) + 28 : 0;
+        const endSpan = wide ? Math.min((W - textEdge) / W * halfW * 1.75, halfH * 1.45) : span * 0.8;
+        rig.scale.setScalar((span + (endSpan - span) * k) / 11);
+        rig.position.set(wide ? halfW * (textEdge / W) * k : 0, halfH * (0.18 + (wide ? -0.1 : 0.25) * k) + Math.sin(time * 0.9) * halfH * 0.015, 0);
         if (stunt.current !== seen) { seen = stunt.current; stuntAt = now; }
-        const stuntProgress = (now - stuntAt) / 1800;
-        const roll = !reduced && stuntProgress > 0 && stuntProgress < 1 ? TAU * smooth(0, 1, stuntProgress) : 0;
-        plane.rotation.set(0.035 + (reduced ? 0 : pointer.y * 0.07 + Math.sin(time * 0.45) * 0.008), AIRCRAFT_YAW + (reduced ? 0 : pointer.x * 0.12), -0.035 + (reduced ? 0 : Math.sin(time * 0.35) * 0.012 - pointer.x * 0.025), "YXZ");
-        plane.rotateZ(roll);
-        rig.scale.setScalar(aircraftScale);
-        rig.position.copy(cameraRight).multiplyScalar((centerX / W * 2 - 1) * halfW - poseOffsetX);
-        rig.position.addScaledVector(cameraUp, (1 - centerY / H * 2) * halfH - poseOffsetY + (reduced ? 0 : Math.sin(time * 0.65) * 0.045));
-        if (!reduced) propAngle += dt * 35;
-        prop.rotation.z = propAngle;
-        const want = d > 0.8 && focus.current && SCENES[focus.current] ? focus.current : "";
+        const s = (now - stuntAt) / 1800, roll = !reduced && s > 0 && s < 1 ? TAU * (s * s * (3 - 2 * s)) : 0;
+        plane.rotation.set(0.04 + (reduced ? 0 : pointer.y * 0.2 + Math.sin(time * 0.7) * 0.025), Math.PI / 2 + 0.68 + Math.sin(p * TAU) * 0.38 + (reduced ? 0 : pointer.x * 0.38), reduced ? 0 : Math.sin(time * 0.5) * 0.055 - pointer.x * 0.12, "YXZ");
+        // Roll about the fuselage's longitudinal axis, which is local z.
+        plane.rotateZ(roll); prop.rotation.z = reduced ? 0.35 : time * 45;
+
+        const want = focus.current && SCENES[focus.current] ? focus.current : "";
         if (want) sceneId = want;
         shown = reduced ? (want ? 1 : 0) : shown + ((want ? 1 : 0) - shown) * Math.min(1, dt * 6);
+        if (shown > 0.001 && sceneId) {
+          sc2.setTransform(1, 0, 0, 1, 0, 0); sc2.fillStyle = "#000"; sc2.fillRect(0, 0, cols, rows);
+          sc2.setTransform(cols / W, 0, 0, rows / H, 0, 0);
+          const bx = wide ? textEdge + 24 : W * 0.08, bw = (wide ? W * 0.95 : W * 0.92) - bx;
+          const by = wide ? H * 0.2 : H * 0.06, bh = Math.min(wide ? H * 0.6 : H * 0.3, bw * 0.8);
+          SCENES[sceneId](sc2, bx, by, bw, bh, time);
+          scenePx = sc2.getImageData(0, 0, cols, rows).data;
+        }
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
         gl.setClearColor(0x000000, 0);
         if (d < 1) {
-          ctx.globalAlpha = 1 - d; ctx.drawImage(sky, 0, 0, W, H);
-          if (shown < 0.999) {
-            gl.setRenderTarget(null); gl.clear(); gl.render(scene, camera);
-            ctx.globalAlpha = (1 - d) * (1 - shown); ctx.drawImage(gl.domElement, 0, 0, W, H);
-          }
-          ctx.globalAlpha = 1;
+          gl.setRenderTarget(null); gl.clear(); gl.render(scene, camera);
+          ctx.globalAlpha = 1 - d; ctx.drawImage(sky, 0, 0, W, H); ctx.drawImage(gl.domElement, 0, 0, W, H); ctx.globalAlpha = 1;
         }
-        if (d > 0) {
-          ctx.globalAlpha = d * 0.6; ctx.drawImage(clouds, 0, 0, W, H); ctx.globalAlpha = 1;
+        if (art > 0 && d > 0) {
+          paintAsciiSky(d, textEdge * k);
+          ctx.globalAlpha = art * d * 0.48; ctx.drawImage(artCanvas, 0, 0, W, H); ctx.globalAlpha = 1;
         }
-
-        const fade = d * (1 - shown);
+        // Skip GPU readback altogether in the full-colour introduction or while another scene covers it.
+        const fade = (wide ? 1 : 1 - k * 0.92) * (1 - shown) * d;
         if (fade > 0.005) {
-          rig.updateMatrixWorld(true); camera.updateMatrixWorld();
-          let left = cols, right = 0, top = rows, bottom = 0;
-          for (const corner of corners) {
-            projected.copy(corner).applyMatrix4(plane.matrixWorld).project(camera);
-            const col = (projected.x * 0.5 + 0.5) * cols, row = (-projected.y * 0.5 + 0.5) * rows;
-            left = Math.min(left, col); right = Math.max(right, col); top = Math.min(top, row); bottom = Math.max(bottom, row);
-          }
-          left = Math.max(0, Math.floor(left) - 3); right = Math.min(cols, Math.ceil(right) + 3);
-          top = Math.max(0, Math.floor(top) - 3); bottom = Math.min(rows, Math.ceil(bottom) + 3);
-          const width = Math.max(0, right - left), height = Math.max(0, bottom - top);
-          if (width && height) {
-            const byteLength = width * height * 4;
-            if (buf.length < byteLength) buf = new Uint8Array(byteLength);
-            rt.scissor.set(left, rows - bottom, width, height);
-            gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
-            gl.readRenderTargetPixels(rt, left, rows - bottom, width, height, buf);
-            ctx.globalAlpha = fade;
-            for (let r = 0; r < height; r++) for (let col = 0; col < width; col++) {
-              const offset = ((height - 1 - r) * width + col) * 4, alpha = buf[offset + 3] / 255;
-              if (alpha < 0.08) continue;
-              const R = Math.min(255, buf[offset] / alpha), G = Math.min(255, buf[offset + 1] / alpha), B = Math.min(255, buf[offset + 2] / alpha);
-              const lum = (0.3 * R + 0.59 * G + 0.11 * B) / 255, red = R > G * 1.4 && R > B * 1.4;
-              const tone = red ? 2 : lum < 0.24 ? 7 : lum < 0.48 ? 3 : lum < 0.75 ? 0 : 1;
-              const density = Math.max(0.2, (red ? 0.9 : 1 - lum * 0.28) * Math.sqrt(alpha));
-              glyph(ctx, (left + col) * cw, (top + r) * ch, RAMP[Math.min(RAMP.length - 1, Math.floor(density * RAMP.length))], tone);
+          gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
+          gl.readRenderTargetPixels(rt, 0, 0, sampleW, sampleH, buf);
+          ctx.globalAlpha = fade;
+          for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+            const base = ((rows - r - 1) * SAMPLE * sampleW + c * SAMPLE) * 4;
+            let R = 0, G = 0, B = 0, a = 0;
+            // Four samples retain thin struts and control-surface edges which one-pixel sampling drops.
+            for (let yy = 0; yy < SAMPLE; yy++) for (let xx = 0; xx < SAMPLE; xx++) {
+              const o = base + (yy * sampleW + xx) * 4, alpha = buf[o + 3] / 255;
+              R += buf[o] * alpha; G += buf[o + 1] * alpha; B += buf[o + 2] * alpha; a += alpha;
             }
-            ctx.globalAlpha = 1;
-          }
-        }
-        if (shown > 0.001 && sceneId) {
-          const bw = mobile ? W * 0.9 : W - contentEdge - gutter * 0.65;
-          const bh = Math.min(H * (mobile ? 0.23 : 0.58), bw * (mobile ? 0.5 : 0.8));
-          const bx = mobile ? W * 0.05 : contentEdge, by = centerY - bh * 0.5;
-          const width = Math.ceil(bw / cw), height = Math.ceil(bh / ch);
-          if (scene2d.width !== width || scene2d.height !== height) { scene2d.width = width; scene2d.height = height; }
-          sc2.setTransform(1, 0, 0, 1, 0, 0); sc2.fillStyle = "#000"; sc2.fillRect(0, 0, width, height);
-          sc2.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0); SCENES[sceneId](sc2, 0, 0, bw, bh, time);
-          const px = sc2.getImageData(0, 0, width, height).data;
-          ctx.globalAlpha = shown;
-          for (let r = 0; r < height; r++) for (let col = 0; col < width; col++) {
-            const i = (r * width + col) * 4, R = px[i], B = px[i + 2], lum = Math.max(R, px[i + 1], B) / 255;
-            if (lum < 0.08) continue;
-            glyph(ctx, bx + col * cw, by + r * ch, RAMP[Math.min(RAMP.length - 1, Math.floor(Math.max(0.25, lum) * RAMP.length))], R > B * 1.1 ? 6 : 5);
+            if (a < 0.14) continue;
+            R /= a; G /= a; B /= a;
+            const lum = (0.3 * R + 0.59 * G + 0.11 * B) / 255;
+            const red = R > G * 1.45 && R > B * 1.5;
+            const tone = red ? 2 : lum < 0.24 ? 3 : lum < 0.65 ? 0 : 1;
+            const density = Math.min(1, Math.max(0.2, (red ? Math.max(0.65, lum) : lum) * Math.min(1, a * 0.55)));
+            glyph(ctx, c * cw, r * ch, RAMP[Math.min(RAMP.length - 1, Math.floor(density * RAMP.length))], tone);
           }
           ctx.globalAlpha = 1;
         }
-        const nextState = d === 1 ? "ascii" : d > 0 ? "transition" : "color";
-        if (nextState !== artState) { artState = nextState; canvas.dataset.artState = artState; }
-        if (firstRenderedAt < 0) { firstRenderedAt = now; canvas.dataset.ready = "true"; }
+        if (art < 1) {
+          ctx.globalAlpha = (1 - art) * 0.6;
+          // Cloud structure is measured in screen pixels so finer characters add detail without
+          // shrinking every cloud or increasing visual clutter behind the copy.
+          for (let r = 0; r < rows; r += 2) for (let c = Math.ceil(textEdge * k / cw); c < cols; c += 2) {
+            const x = c * cw, yy = r * ch;
+            const n = noise(x * 0.009 + time * 0.14, yy * 0.012) * 0.7 + noise(x * 0.027 + time * 0.2, yy * 0.032) * 0.3;
+            if (n > 0.68) glyph(ctx, x, yy, n > 0.75 ? ":" : ".", 4);
+          }
+          for (const st of streaks) {
+            st.x += st.v * dt * (reduced ? 0 : 1);
+            if (st.x > 1.1) { st.x = -0.1; st.y = rnd(); }
+            for (let j = 0; j < st.len; j += cw) {
+              const x = st.x * W - j;
+              if (x >= textEdge * k) glyph(ctx, x, Math.floor(st.y * rows) * ch, "-", 4);
+            }
+          }
+          ctx.globalAlpha = 1;
+        }
+        if (shown > 0.001) {
+          ctx.globalAlpha = shown * (wide ? 1 : 0.35);
+          for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+            const i = (r * cols + c) * 4, R = scenePx[i], G = scenePx[i + 1], B = scenePx[i + 2], lum = Math.max(R, G, B) / 255;
+            if (lum < 0.08) continue;
+            const g = RAMP[Math.min(RAMP.length - 1, Math.floor(Math.max(0.2, lum) * RAMP.length))];
+            glyph(ctx, c * cw, r * ch, g, R > B * 1.1 ? 6 : 5);
+          }
+          ctx.globalAlpha = 1;
+        }
       };
       raf = requestAnimationFrame(frame);
-      window.addEventListener("resize", resize); window.addEventListener("pointermove", onMove, { passive: true }); motion.addEventListener("change", onMotion);
-      disposers.push(() => { window.removeEventListener("resize", resize); window.removeEventListener("pointermove", onMove); motion.removeEventListener("change", onMotion); });
+      window.addEventListener("resize", resize);
+      window.addEventListener("pointermove", onMove, { passive: true });
+      motion.addEventListener("change", onMotion);
+      disposers.push(() => {
+        window.removeEventListener("resize", resize); window.removeEventListener("pointermove", onMove);
+        motion.removeEventListener("change", onMotion);
+      });
     };
     initialise().catch((error: unknown) => {
       cancelAnimationFrame(raf); cleanup();
-      if (!disposed) console.error("Unable to initialise the aircraft illustration", error);
+      if (!disposed) console.error("Unable to initialise the flight illustration", error);
     });
     return () => { disposed = true; abort.abort(); cancelAnimationFrame(raf); cleanup(); };
   }, [stunt, focus]);
