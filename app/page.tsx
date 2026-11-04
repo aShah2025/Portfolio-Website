@@ -334,6 +334,7 @@ export default function Home() {
         <footer className="links">
           <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
           <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
+          <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume ↗</a>
           <a href="#top">Top ↑</a>
           <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode">☾</button>
           <span>© 2026</span>
