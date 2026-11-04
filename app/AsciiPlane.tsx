@@ -21,16 +21,30 @@ function noise(x: number, y: number) {
 // Repeatable movement for the faint streaks behind the portfolio.
 const seeded = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
-// Keep the painting and its ASCII version on exactly the same cover crop at every screen size.
-function paintPiano(image: HTMLImageElement, W: number, H: number) {
+// A small, overhead keyboard leaves the opening mostly empty. The same drawing feeds the ASCII pass.
+function paintPiano(W: number, H: number) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const c = cv.getContext("2d")!;
-  c.fillStyle = "#0b0e13"; c.fillRect(0, 0, W, H);
-  if (image.complete && image.naturalWidth > 0) {
-    const scale = Math.max(W / image.naturalWidth, H / image.naturalHeight);
-    const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
-    c.drawImage(image, (W - width) * 0.5, (H - height) * 0.45, width, height);
+  const width = W < 700 ? W * 0.78 : Math.min(W * 0.6, 680);
+  const height = Math.min(width * 0.18, 110), left = (W - width) * 0.5, top = H * 0.37 - height * 0.5;
+  const keyWidth = width / 21, gap = Math.max(0.8, Math.min(1.4, keyWidth * 0.045));
+  const ivory = c.createLinearGradient(0, top, 0, top + height);
+  ivory.addColorStop(0, "#7e8791"); ivory.addColorStop(0.87, "#9da3aa"); ivory.addColorStop(1, "#8d96a0");
+  c.fillStyle = ivory;
+  for (let key = 0; key < 21; key++) c.fillRect(left + key * keyWidth + gap * 0.5, top, keyWidth - gap, height);
+  // C♯, D♯, F♯, G♯, A♯ repeat in each octave; E/F and B/C have no black key.
+  const blackWidth = keyWidth * 0.58, blackHeight = height * 0.64;
+  const ebony = c.createLinearGradient(0, top, 0, top + blackHeight);
+  ebony.addColorStop(0, "#11151c"); ebony.addColorStop(1, "#1a2029");
+  for (let octave = 0; octave < 3; octave++) for (const after of [0, 1, 3, 4, 5]) {
+    const x = left + (octave * 7 + after + 1) * keyWidth - blackWidth * 0.5;
+    c.fillStyle = "#303640"; c.fillRect(x - 0.6, top, blackWidth + 1.2, blackHeight + 1);
+    c.fillStyle = ebony; c.fillRect(x, top, blackWidth, blackHeight);
   }
+  const edge = c.createLinearGradient(left, 0, left + width, 0);
+  edge.addColorStop(0, "rgba(0,0,0,0)"); edge.addColorStop(0.1, "#000");
+  edge.addColorStop(0.9, "#000"); edge.addColorStop(1, "rgba(0,0,0,0)");
+  c.globalCompositeOperation = "destination-in"; c.fillStyle = edge; c.fillRect(0, 0, W, H);
   return cv;
 }
 
@@ -51,22 +65,17 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
     const abort = new AbortController();
     const disposers: (() => void)[] = [];
     const cleanup = () => { while (disposers.length) disposers.pop()!(); };
-    const pianoImage = new Image();
-    pianoImage.decoding = "async";
-    // Show the painting as soon as it arrives, without waiting for the 3D model or shader setup.
-    let refreshPiano = () => {
+    // The opening is immediate and remains usable even if the 3D model cannot initialize.
+    const paintImmediatePiano = () => {
+      if (disposed) return;
       const width = window.innerWidth, height = window.innerHeight, ratio = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.drawImage(paintPiano(pianoImage, width, height), 0, 0, width, height);
+      ctx.drawImage(paintPiano(width, height), 0, 0, width, height);
+      canvas.dataset.intro = "piano-keys";
     };
-    pianoImage.onload = () => {
-      if (disposed) return;
-      refreshPiano(); canvas.dataset.intro = "piano";
-    };
-    pianoImage.onerror = () => { if (!disposed) refreshPiano(); };
-    const cleanupPiano = () => { pianoImage.onload = null; pianoImage.onerror = null; pianoImage.removeAttribute("src"); };
-    pianoImage.src = "/images/piano-intro.webp";
+    paintImmediatePiano();
+    window.addEventListener("resize", paintImmediatePiano);
 
     const initialise = async () => {
       const [THREE, { RoomEnvironment }] = await Promise.all([
@@ -114,14 +123,8 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const streaks = Array.from({ length: 14 }, () => ({ x: rnd(), y: rnd(), len: 16 + rnd() * 35, v: 0.025 + rnd() * 0.035 }));
       // Body paint has several tones, so windows, shadows, white skin, and red livery stay distinct.
       let palette = ["#92abd2", "#e7eef8", "#ff876c", "#5d80b1", "#354154", "#7aa2f7", "#ff7a5c"];
-      const PIANO_TONE = palette.length, PIANO_LEVELS = 5;
-      // A small RGB cube keeps the painting's own muted colors, rather than tinting it with the
-      // aircraft's blue/red palette. All of these tiny glyphs are rasterized only once per resize.
-      const pianoPalette = Array.from({ length: PIANO_LEVELS ** 3 }, (_, i) => {
-        const r = Math.floor(i / (PIANO_LEVELS * PIANO_LEVELS)), g = Math.floor(i / PIANO_LEVELS) % PIANO_LEVELS, b = i % PIANO_LEVELS;
-        const channel = (n: number) => Math.round(n * 255 / (PIANO_LEVELS - 1));
-        return `rgb(${channel(r)},${channel(g)},${channel(b)})`;
-      });
+      const PIANO_TONE = palette.length;
+      const pianoPalette = ["#17202a", "#2b3540", "#414c58", "#566371", "#73808c", "#929ca5", "#aab1b8", "#c0c4c8"];
       const glyphIndex = new Map([...GLYPHS].map((g, i) => [g, i]));
       const buildAtlas = () => {
         const colors = [...palette, ...pianoPalette];
@@ -158,7 +161,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         scene2d.width = cols; scene2d.height = rows;
         artCanvas.width = canvas.width; artCanvas.height = canvas.height;
         camera.aspect = W / H; camera.updateProjectionMatrix();
-        piano = paintPiano(pianoImage, W, H);
+        piano = paintPiano(W, H);
         readColors();
       };
       resize();
@@ -171,15 +174,14 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         const px = sc2.getImageData(0, 0, cols, rows).data;
         for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
           const i = (r * cols + c) * 4, lum = (0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2]) / 255;
-          if (lum < 0.04) continue;
-          const quantize = (v: number) => Math.round(v * (PIANO_LEVELS - 1) / 255);
-          const tone = PIANO_TONE + quantize(px[i]) * PIANO_LEVELS * PIANO_LEVELS + quantize(px[i + 1]) * PIANO_LEVELS + quantize(px[i + 2]);
+          const alpha = px[i + 3] / 255;
+          if (lum < 0.04 || alpha < 0.04) continue;
+          const tone = PIANO_TONE + Math.min(pianoPalette.length - 1, Math.round(lum / 0.75 * (pianoPalette.length - 1)));
           const density = Math.min(1, Math.sqrt(lum) * 1.25);
+          artCtx.globalAlpha = alpha;
           glyph(artCtx, c * cw, r * ch, PIANO_RAMP[Math.min(PIANO_RAMP.length - 1, Math.floor(density * PIANO_RAMP.length))], tone);
         }
-      };
-      refreshPiano = () => {
-        piano = paintPiano(pianoImage, W, H); pianoAsciiReady = false; needsDraw = true;
+        artCtx.globalAlpha = 1;
       };
 
       const onMove = (e: PointerEvent) => { pointer.tx = e.clientX / W - 0.5; pointer.ty = e.clientY / H - 0.5; };
@@ -203,8 +205,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         const follow = 1 - Math.exp(-dt * 5);
         pointer.x += (pointer.tx - pointer.x) * follow; pointer.y += (pointer.ty - pointer.y) * follow;
         const y = Math.max(0, window.scrollY - introTop), sy = y / H;
-        // The same painting dissolves into its matching ASCII crop before the aircraft joins the
-        // portfolio. Keeping the full-color model out of the opening lets the artwork stay quiet.
+        // The small keyboard becomes ASCII before the aircraft joins the portfolio below.
         const d = smooth(0.03, 0.56, sy), art = 1 - smooth(0.64, 1, sy), k = smooth(0, 1, sy / 0.9);
         const max = document.documentElement.scrollHeight - H - introTop, p = max > 0 ? y / max : 0;
         const halfH = Math.tan(camera.fov * Math.PI / 360) * 30, halfW = halfH * camera.aspect, wide = W >= 900;
@@ -240,7 +241,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
           paintAsciiPiano();
           ctx.globalAlpha = art * d; ctx.drawImage(artCanvas, 0, 0, W, H); ctx.globalAlpha = 1;
         }
-        // Let the portfolio copy enter over a quiet background while the painting remains on the right.
+        // Let the portfolio copy enter over a quiet background while the keyboard fades on the right.
         if (wide && art > 0 && sy > 0.18) {
           const mask = ctx.createLinearGradient(textEdge - 40, 0, textEdge + 56, 0);
           mask.addColorStop(0, `rgba(0,0,0,${smooth(0.18, 0.56, sy)})`);
@@ -304,6 +305,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         }
       };
       raf = requestAnimationFrame(frame);
+      window.removeEventListener("resize", paintImmediatePiano);
       window.addEventListener("resize", resize);
       window.addEventListener("pointermove", onMove, { passive: true });
       motion.addEventListener("change", onMotion);
@@ -316,7 +318,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       cancelAnimationFrame(raf); cleanup();
       if (!disposed) console.error("Unable to initialise the flight illustration", error);
     });
-    return () => { disposed = true; abort.abort(); cancelAnimationFrame(raf); cleanup(); cleanupPiano(); };
+    return () => { disposed = true; abort.abort(); cancelAnimationFrame(raf); cleanup(); window.removeEventListener("resize", paintImmediatePiano); };
   }, [stunt, focus]);
   return <canvas ref={ref} className="sky" aria-hidden="true" />;
 }

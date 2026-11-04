@@ -160,29 +160,6 @@ const INFO: Record<string, Info> = {
 const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
 const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
-const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
-
-// Types out each role, holds it, deletes it, and moves to the next, like someone at a terminal.
-function Typer() {
-  const [text, setText] = useState(ROLES[0]);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let i = 0, n = ROLES[0].length, dir = -1, id = 0;
-    const tick = () => {
-      const word = ROLES[i];
-      n += dir;
-      setText(word.slice(0, n));
-      let wait = dir > 0 ? 70 : 35;
-      if (dir > 0 && n >= word.length) { dir = -1; wait = 1800; }
-      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % ROLES.length; wait = 300; }
-      id = window.setTimeout(tick, wait);
-    };
-    id = window.setTimeout(tick, 2200);
-    return () => clearTimeout(id);
-  }, []);
-  return <span className="typer">{text}<i aria-hidden="true" /></span>;
-}
-
 // A text progress bar: [#######---]
 const bar = (done: number, of: number) => `[${"#".repeat(done)}${"-".repeat(of - done)}]`;
 
@@ -336,12 +313,11 @@ export default function Home() {
 
   return (
     <main>
-      <link rel="preload" as="image" href="/images/piano-intro.webp" fetchPriority="high" />
       <AsciiPlane stunt={stunt} focus={focus} />
 
       <section className="intro" id="top">
         <h1>aaditya shah</h1>
-        <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
+        <p className="intro-role">student / builder</p>
         <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
       </section>
 

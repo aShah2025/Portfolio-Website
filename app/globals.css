@@ -17,16 +17,15 @@ a, button { color: inherit; font: inherit; background: none; border: 0; padding:
 .sky { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 main { position: relative; z-index: 1; }
 
-/* intro: the plane fills the screen, the name sits under it */
-.intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; text-align: center; }
-.intro > * { padding: 5px 9px; background: var(--paper); border-radius: 2px; }
-.intro h1 { margin: 0; font: 500 15px/1 var(--mono); letter-spacing: .02em; }
+/* A quiet keyboard study above a small, static introduction. */
+.intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 28svh; text-align: center; }
+.intro h1 { margin: 0; font: 400 15px/1.2 var(--mono); letter-spacing: .02em; }
+.intro-role { margin: 10px 0 0; color: var(--muted); font: 400 10px/1.5 var(--mono); letter-spacing: .02em; }
 .prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .1em; text-transform: uppercase; }
-.typer i, .prompt > i { display: inline-block; width: .6em; height: 1.1em; margin-left: 3px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
-.hint { margin-top: 28px; font: 400 11px/1 var(--mono); color: var(--muted); letter-spacing: .08em; }
-.hint span { display: inline-block; animation: bob 1.6s ease-in-out infinite; }
+.prompt > i { display: inline-block; width: .6em; height: 1.1em; margin-left: 3px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
+.hint { margin-top: 30px; padding: 8px; font: 400 10px/1 var(--mono); color: var(--muted); letter-spacing: .04em; }
+.hint span { opacity: .55; }
 @keyframes blink { 50% { opacity: 0; } }
-@keyframes bob { 50% { transform: translateY(3px); } }
 
 /* index: one narrow column on the left, the plane flies on the right */
 .index { width: min(100%, 440px); padding: 12vh 16px 64px clamp(16px, 4vw, 48px); }
