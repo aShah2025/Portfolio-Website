@@ -142,7 +142,9 @@ export default function AsciiPlane({ stunt, focus, flight, onReady, onFlightComp
         buildAtlas(); paintClouds(); needsDraw = true;
       };
       const resize = () => {
-        W = window.innerWidth; H = window.innerHeight; dpr = Math.min(2, window.devicePixelRatio || 1);
+        W = window.innerWidth; H = window.innerHeight;
+        // Bound all three backing stores on large Retina screens as well as the ASCII grid.
+        dpr = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(8_000_000 / (W * H)));
         canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
         // Ordinary desktop and mobile screens use true 2px letters. Only ultrawide screens scale up.
         const size = W > 2200 || H > 1600 ? Math.max(2, W / 2200 * 2, Math.sqrt(W * H / 800000) / 0.85) : 2;
@@ -197,7 +199,7 @@ export default function AsciiPlane({ stunt, focus, flight, onReady, onFlightComp
         rig.position.set(wide ? halfW * textEdge / W * k : 0, mix(parkingY + lift * halfH * 0.28, endY, k) + (reduced ? 0 : Math.sin(time * 0.9) * halfH * 0.015 * k), 0);
         runway.group.rotation.y = PARKING_YAW;
         runway.group.position.set(0, parkingY, 0); runway.group.scale.setScalar(parkingScale);
-        runway.update(phase === "takeoff" ? 70 * progress * progress : 0);
+        if (phase !== "portfolio") runway.update(phase === "takeoff" ? 70 * progress * progress : 0);
         runway.setOpacity(phase === "runway" ? 1 : phase === "takeoff" ? 1 - smooth(0.45, 0.87, progress) : 0);
         runway.group.visible = phase !== "portfolio" && d < 1;
         const scroll = Math.min(1, window.scrollY / Math.max(1, document.documentElement.scrollHeight - H));
