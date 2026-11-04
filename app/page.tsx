@@ -126,7 +126,39 @@ const awards = [
   { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
 ];
 
-const LANGUAGES: [string, string?][] = [["Swift"], ["Python"], ["Java"], ["JavaScript"], ["HTML"], ["C++", "learning"]];
+// What each project is made of, read from its repo on github.com/aShah2025. Projects whose code isn't public
+// only list what's already known about them.
+const BUILT: Record<string, [string, string][]> = {
+  wayfinder: [["Platform", "Web"], ["Type", "AI route planner"], ["Languages", "Python, JavaScript"], ["Backend", "FastAPI on Uvicorn"], ["Routing", "Valhalla (pyvalhalla) on OpenStreetMap"], ["AI", "Google Gemini turns your words into ride settings"], ["Frontend", "HTML / CSS / JS with MapLibre GL and a 3D hill preview"], ["Hosting", "Vercel, Python serverless"], ["Tests", "pytest"]],
+  culturerisk: [["Platform", "Web"], ["Type", "AI research agent, also an MCP tool"], ["Language", "JavaScript (Node 20)"], ["Frontend", "Plain HTML / CSS / JS, no framework"], ["Backend", "Netlify Functions (serverless)"], ["Data", "Qloo taste-graph API through a server-side bridge"], ["Tests", "node:test, GitHub Actions CI"]],
+  sum: [["Platform", "iOS"], ["Type", "Budgeting app"], ["Language", "Swift"], ["UI", "SwiftUI"], ["Data", "SwiftData, stored on the phone"], ["Charts", "Swift Charts"], ["Built in", "Xcode"]],
+  kura: [["Platform", "iOS"], ["Type", "Health / nutrition app"], ["Language", "Swift"], ["UI", "SwiftUI"], ["Data", "SwiftData, stored on the phone"], ["Built in", "Xcode"]],
+  canary: [["Platform", "iOS"], ["Type", "On-device health app"], ["Language", "Swift"], ["UI", "SwiftUI"], ["Sensors", "ARKit face tracking"], ["Health data", "HealthKit"], ["Code", "Private for now"]],
+  refill: [["Platform", "iOS 17+"], ["Type", "Classroom-supply app for teachers and parents"], ["App", "Swift / SwiftUI"], ["Voice", "Speech + AVFoundation for spoken requests"], ["Sign-in", "Sign in with Apple"], ["Backend", "TypeScript Cloudflare Worker (Wrangler), tested with Vitest"], ["Payments", "Stripe"], ["Data", "DonorsChoose"], ["AI", "OpenRouter model parses requests"]],
+  coursefit: [["Platform", "Web"], ["Type", "School scheduling engine"], ["Code", "Repo is up, code not pushed yet"]],
+  "turbo-lane": [["Type", "Arcade game"], ["Status", "Playable"], ["Code", "Not on GitHub yet"]],
+  "formula-racer": [["Platform", "Desktop"], ["Type", "3D racing game"], ["Engine", "Unity 6, Universal Render Pipeline"], ["Language", "C#"], ["Input", "Unity Input System"]],
+  winglab: [["Platform", "macOS"], ["Type", "Aerodynamics simulator"], ["Code", "Not on GitHub yet"]],
+};
+
+const LANGUAGES: [string, string?][] = [["Swift"], ["Python"], ["Java"], ["JavaScript"], ["HTML"], ["C#"], ["C++", "learning"]];
+
+// Opens under a language or tool chip: what it is, how it works, how to start, and where I use it.
+type Info = { lead: string; how: string; use: string; mine: string };
+const INFO: Record<string, Info> = {
+  Swift: { lead: "Apple's language for iPhone, iPad and Mac apps.", how: "Swift compiles through LLVM straight to machine code, so it's fast. It's strictly typed, and optionals force you to handle missing values, which removes a whole class of crashes. Memory is managed with automatic reference counting. SwiftUI describes screens as views that redraw when their data changes.", use: "struct Hello: View {\n  var body: some View {\n    Text(\"hi\")\n  }\n}\n// Xcode → New Project → App → ⌘R", mine: "Sum, Kura, Canary and Refill." },
+  Python: { lead: "A readable general-purpose language for scripts, servers and AI.", how: "CPython compiles your code to bytecode and runs it on an interpreter, so there's no build step. Types are checked at runtime. Most of its power is the package ecosystem from pip.", use: "python3 -m venv .venv\nsource .venv/bin/activate\npip install fastapi uvicorn\npython3 app.py", mine: "Wayfinder's backend: FastAPI, Valhalla routing and Gemini." },
+  Java: { lead: "A typed, object-oriented language that runs anywhere there's a JVM.", how: "javac compiles source to bytecode. The Java Virtual Machine runs it and JIT-compiles hot code to machine code. Everything lives in classes, and a garbage collector cleans up memory.", use: "// Main.java\npublic class Main {\n  public static void main(String[] a) {\n    System.out.println(\"hi\");\n  }\n}\n\njavac Main.java && java Main", mine: "Where I learned classes and objects." },
+  JavaScript: { lead: "The language of the web, in the browser and on servers.", how: "Engines like V8 JIT-compile it as it runs. It's single-threaded with an event loop, so slow work (network, timers) is handled with promises and async/await instead of blocking. Node.js runs the same language on servers.", use: "// in a page\n<script src=\"app.js\"></script>\n\n// or on a server\nnode app.js", mine: "CultureRisk, Wayfinder's map, and this site (in TypeScript, which is JavaScript with types)." },
+  HTML: { lead: "The structure of every web page.", how: "It's markup, not a programming language. The browser parses tags into a tree called the DOM, CSS styles that tree, and JavaScript changes it to make the page interactive.", use: "<!doctype html>\n<h1>hello</h1>\n<p>save as index.html and open it in a browser</p>", mine: "Every web project, including this one." },
+  "C#": { lead: "Microsoft's typed language, and the scripting language of Unity.", how: "C# compiles to an intermediate language that .NET (or Unity's runtime) turns into machine code. In Unity, each script is a component on a game object, and Update() runs every frame.", use: "public class Car : MonoBehaviour {\n  void Update() {\n    transform.Translate(0, 0, 10 * Time.deltaTime);\n  }\n}", mine: "Formula Racer in Unity." },
+  "C++": { lead: "A fast, low-level language used for games, engines and systems.", how: "It compiles ahead of time to machine code with no garbage collector, so you control memory directly. Templates generate code at compile time.", use: "// main.cpp\n#include <iostream>\nint main() { std::cout << \"hi\\n\"; }\n\nclang++ -std=c++20 main.cpp -o main && ./main", mine: "Learning it now, with practice problems so far." },
+  Xcode: { lead: "Apple's IDE for building and shipping Apple apps.", how: "It compiles Swift, runs apps in the iOS Simulator or on a real phone, shows live SwiftUI previews, debugs with breakpoints, profiles with Instruments, and signs and uploads builds to the App Store.", use: "⌘R    run in the simulator\n⌘U    run tests\n⌘⇧K   clean build\n⌥⌘↩   show the preview canvas", mine: "Every iOS app I've built." },
+  "VS Code": { lead: "A lightweight editor that becomes an IDE through extensions.", how: "It's built on Electron. Language servers give it autocomplete and errors for almost any language, and it has a built-in terminal, git and debugger.", use: "code .   open this folder\n⌘P       jump to a file\n⌘⇧P      command palette\n⌃`       terminal", mine: "Web projects like CultureRisk and this site." },
+  PyCharm: { lead: "JetBrains' IDE made just for Python.", how: "It indexes the whole project, so autocomplete, refactoring and find-usages understand your code. It manages virtual environments and has a visual debugger and test runner.", use: "open a folder, set the interpreter to .venv\n⌃R   run\n⌃D   debug\n⇧⇧   search everything", mine: "Python work like Wayfinder's backend." },
+  "Claude Code": { lead: "Anthropic's AI coding agent that works in the terminal.", how: "You describe a task in plain English. It reads the repo, plans, edits files, and runs commands like tests and builds, asking before anything risky. It works on the real project, not a copy.", use: "npm install -g @anthropic-ai/claude-code\ncd my-project\nclaude\n> add a dark mode toggle", mine: "This site, including the 3D MacBook up top." },
+  Codex: { lead: "OpenAI's coding agent, in the terminal and the cloud.", how: "It reads your repo, makes changes in a sandbox, runs commands, and shows you the diff to accept. The cloud version can work on several tasks in parallel.", use: "npm install -g @openai/codex\ncd my-project\ncodex\n> fix the failing test", mine: "A second opinion on tricky bugs." },
+};
 const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
 const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
@@ -205,6 +237,12 @@ export default function Home() {
         <p>{p.description}</p>
         <ul>{p.features.map((f) => <li key={f}>{f}</li>)}</ul>
         <dl>{p.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+        {BUILT[p.id] && (
+          <div className="made">
+            <p className="made-h">made of</p>
+            <dl className="spec">{BUILT[p.id].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+          </div>
+        )}
         {p.links && <p className="out">{p.links.map(([label, href]) => <a key={href} href={href} target="_blank" rel="noreferrer">{label} ↗</a>)}</p>}
       </>
     ),
@@ -260,6 +298,36 @@ export default function Home() {
     if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
   };
 
+  // a row of chips; clicking one opens its notes underneath
+  const chips = (names: string[], notes: Record<string, string | undefined> = {}) => {
+    const open = names.find((n) => openProject === `chip-${n}`);
+    const info = open ? INFO[open] : undefined;
+    return (
+      <>
+        <ul className="langs">
+          {names.map((n) => (
+            <li key={n} className={notes[n] ? "learning" : ""}>
+              <button type="button" aria-expanded={open === n} className={open === n ? "on" : ""} onClick={() => toggle(`chip-${n}`)}>
+                {n}{notes[n] && <small> {notes[n]}</small>}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {open && info && (
+          <div className="chip-body">
+            <p className="lead">{info.lead}</p>
+            <p className="made-h">how it works</p>
+            <p>{info.how}</p>
+            <p className="made-h">how to use it</p>
+            <pre className="code">{info.use}</pre>
+            <p className="made-h">where i use it</p>
+            <p>{info.mine}</p>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const list = (items: Item[]) => (
     <ul className="project-list">
       {items.map((it) => {
@@ -301,15 +369,13 @@ export default function Home() {
 
         <section aria-labelledby="h-lang">
           <h3 id="h-lang">languages</h3>
-          <ul className="langs">
-            {LANGUAGES.map(([name, note]) => <li key={name} className={note ? "learning" : ""}>{name}{note && <small> {note}</small>}</li>)}
-          </ul>
+          {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
         </section>
 
         <section aria-labelledby="h-setup">
           <h3 id="h-setup">setup</h3>
           <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-          <ul className="langs">{TOOLS.map((t) => <li key={t}>{t}</li>)}</ul>
+          {chips(TOOLS)}
         </section>
         <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
 

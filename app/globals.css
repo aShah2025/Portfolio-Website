@@ -64,10 +64,22 @@ main { position: relative; z-index: 1; }
 @keyframes open { from { opacity: 0; transform: translateY(-4px); } }
 
 .langs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.langs li { padding: 3px 8px; border: 1px solid var(--line); border-radius: 3px; font: 400 11px/1.4 var(--mono); color: var(--plane); }
+.langs li { border: 1px solid var(--line); border-radius: 3px; font: 400 11px/1.4 var(--mono); color: var(--plane); transition: border-color .15s, background .15s; }
+.langs li button { padding: 3px 8px; color: inherit; font: inherit; }
+.langs li:hover { border-color: var(--plane); }
+.langs li:has(button.on) { border-color: var(--plane); background: var(--plane); color: var(--paper); }
+.langs li:has(button.on) small { color: inherit; opacity: .7; }
+.chip-body { margin-top: 12px; padding: 4px 0 6px 14px; border-left: 1px solid var(--plane); color: var(--muted); font-size: 13.5px; animation: open .25s ease; }
+.chip-body p { margin: 0 0 10px; }
+.chip-body .lead { color: var(--ink); }
+.made { margin: 4px 0 12px; }
+.made-h { margin: 14px 0 6px !important; font: 400 10px/1 var(--mono); color: var(--faint); letter-spacing: .1em; text-transform: uppercase; }
+.made-h::before { content: "// "; }
+.made .spec dd { color: var(--muted); }
+.code { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; font: 400 11px/1.6 var(--mono); color: var(--ink); white-space: pre; overflow-x: auto; }
 .langs li.learning { border-style: dashed; color: var(--muted); }
 .spec { margin: 0 0 12px; font: 400 11px/1.9 var(--mono); }
-.spec div { display: grid; grid-template-columns: 76px 1fr; }
+.spec div { display: grid; grid-template-columns: 76px 1fr; gap: 0 8px; }
 .spec dt { color: var(--faint); }
 .spec dd { margin: 0; color: var(--ink); }
 .langs small { font-size: 10px; color: var(--faint); }
@@ -113,3 +125,7 @@ main { position: relative; z-index: 1; }
 .mac-tag::after { content: ""; position: absolute; left: 50%; bottom: 4px; height: 44px; border-left: 1px dashed rgba(139,124,255,.9); }
 .mac-tag::before { content: ""; position: absolute; left: calc(50% - 3px); bottom: 0; width: 7px; height: 7px; border-radius: 50%; background: #8b7cff; box-shadow: 0 0 12px #8b7cff; }
 .mac-hint { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); font: 400 11px/1 var(--mono); letter-spacing: .1em; color: #8a8a96; }
+.project-list .body .made dl { display: block; font: 400 11px/1.55 var(--mono); letter-spacing: 0; text-transform: none; }
+.project-list .body .made dl div { display: grid; grid-template-columns: 84px 1fr; gap: 0 10px; padding: 2px 0; }
+.project-list .body .made dd { color: var(--ink); opacity: .8; }
+.project-list .body .out { display: flex; gap: 16px; }

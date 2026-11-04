@@ -235,14 +235,29 @@ function paintScreen(cv: HTMLCanvasElement, typed: number, unlocked: boolean, no
     c.fillStyle = "rgba(18,18,24,.94)"; c.beginPath(); c.roundRect(x, y, tw, th, 26); c.fill();
     c.shadowColor = "transparent";
     ["#ff5f57", "#febc2e", "#28c840"].forEach((col, i) => { c.fillStyle = col; c.beginPath(); c.arc(x + 44 + i * 40, y + 40, 12, 0, Math.PI * 2); c.fill(); });
-    c.fillStyle = "rgba(255,255,255,.5)"; c.font = `500 26px ${sys}`; c.textAlign = "center"; c.fillText("aaditya — zsh", x + tw / 2, y + 41);
-    const mono = `ui-monospace, "SF Mono", Menlo, monospace`; c.textAlign = "left"; c.font = `400 36px ${mono}`;
-    const lines: [string, string][] = [
-      ["#8b7cff", "~ % whoami"], ["#e9e9ee", "aaditya shah · student / builder"], ["", ""],
-      ["#8b7cff", "~ % ls projects/"], ["#e9e9ee", PROJECTS.slice(0, 3).join("   ")], ["#e9e9ee", PROJECTS.slice(3).join("   ")], ["", ""],
-      ["#8b7cff", "~ % open portfolio"], ["#ff7a4a", "scroll to begin ↓"],
+    c.fillStyle = "rgba(255,255,255,.5)"; c.font = `500 26px ${sys}`; c.textAlign = "center"; c.fillText("portfolio — claude", x + tw / 2, y + 41);
+
+    // a Claude Code session: welcome box, a prompt, and the agent working through it
+    const mono = `ui-monospace, "SF Mono", Menlo, monospace`, CLAUDE = "#d97757", lx = x + 50;
+    c.textAlign = "left"; c.strokeStyle = CLAUDE; c.lineWidth = 2;
+    c.beginPath(); c.roundRect(lx, y + 82, tw - 100, 118, 14); c.stroke();
+    c.font = `400 34px ${mono}`; c.fillStyle = CLAUDE; c.fillText("✻", lx + 28, y + 122);
+    c.fillStyle = "#e9e9ee"; c.fillText("Welcome to Claude Code!", lx + 72, y + 122);
+    c.font = `400 26px ${mono}`; c.fillStyle = "rgba(233,233,238,.5)"; c.fillText("cwd: ~/Developer/portfolio", lx + 72, y + 168);
+    const lines: [string, string, number?][] = [
+      ["rgba(233,233,238,.55)", "> make my website more like the video"],
+      ["", ""],
+      ["#e9e9ee", "⏺ I'll build a 3D MacBook for the opening shot."],
+      ["#e9e9ee", "⏺ Write(app/MacbookHero.tsx)"],
+      ["rgba(233,233,238,.5)", "  ⎿  Wrote 412 lines", 26],
+      ["#e9e9ee", `⏺ Done. ${PROJECTS.length} projects are waiting below.`],
+      ["", ""],
+      [CLAUDE, "✻ scroll to begin ↓"],
     ];
-    lines.forEach(([col, t], i) => { c.fillStyle = col; c.fillText(t, x + 50, y + 130 + i * 56); });
+    lines.forEach(([col, t, size], i) => { c.font = `400 ${size ?? 30}px ${mono}`; c.fillStyle = col; c.fillText(t, lx, y + 262 + i * 50); });
+    c.strokeStyle = "rgba(233,233,238,.25)"; c.lineWidth = 2; c.beginPath(); c.roundRect(lx, y + th - 92, tw - 100, 60, 10); c.stroke();
+    c.font = `400 28px ${mono}`; c.fillStyle = "rgba(233,233,238,.7)"; c.fillText(">", lx + 20, y + th - 60);
+    c.fillStyle = "#e9e9ee"; c.fillRect(lx + 52, y + th - 76, 16, 32);
   }
 
   // the notch, with its camera
