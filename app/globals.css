@@ -99,3 +99,17 @@ main { position: relative; z-index: 1; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* opening shot: a scroll-driven 3D laptop on a dark stage, always dark whatever the theme */
+.mac { position: relative; height: 520vh; background: #0c0d0f; color: #e9e9ee; }
+.mac-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+.mac-stage canvas { display: block; width: 100%; height: 100%; }
+.mac-caps { position: absolute; inset: auto 16px 9vh; display: grid; justify-items: center; pointer-events: none; }
+.cap { grid-area: 1 / 1; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; opacity: 0; will-change: opacity, transform; }
+.cap small { font: 400 11px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: #9a9aa6; }
+.cap b { font: 300 clamp(30px, 6vw, 68px)/1.05 var(--font-geist-sans), system-ui, sans-serif; letter-spacing: -.03em; color: #ececf1; text-shadow: 0 2px 24px rgba(0,0,0,.8); }
+.cap em { font-style: normal; color: #8b7cff; }
+.mac-tag { position: absolute; left: 0; top: 0; padding-bottom: 54px; font: 400 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #ececf1; opacity: 0; pointer-events: none; }
+.mac-tag::after { content: ""; position: absolute; left: 50%; bottom: 4px; height: 44px; border-left: 1px dashed rgba(139,124,255,.9); }
+.mac-tag::before { content: ""; position: absolute; left: calc(50% - 3px); bottom: 0; width: 7px; height: 7px; border-radius: 50%; background: #8b7cff; box-shadow: 0 0 12px #8b7cff; }
+.mac-hint { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); font: 400 11px/1 var(--mono); letter-spacing: .1em; color: #8a8a96; }

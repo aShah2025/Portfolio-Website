@@ -303,10 +303,14 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
 
         // scroll drives three things: the painting breaking into ASCII (d), the ASCII painting fading to the
         // plain sky (art), and the plane moving from the centre to beside the content (k)
-        const sy = window.scrollY / H;
+        // everything is measured from the intro section, which sits under the laptop hero; skip work while the
+        // hero still covers the screen
+        const introTop = document.getElementById("top")?.offsetTop ?? 0;
+        if (window.scrollY < introTop - H) { raf = requestAnimationFrame(frame); return; }
+        const y = Math.max(0, window.scrollY - introTop), sy = y / H;
         const d = smooth(0.02, 0.5, sy), art = 1 - smooth(0.55, 1, sy), k = smooth(0, 1, sy / 0.9);
-        const max = document.documentElement.scrollHeight - H;
-        const p = max > 0 ? window.scrollY / max : 0;
+        const max = document.documentElement.scrollHeight - H - introTop;
+        const p = max > 0 ? y / max : 0;
         const halfH = Math.tan((camera.fov * Math.PI) / 360) * 30, halfW = halfH * camera.aspect;
         const wide = W >= 900;
         const span = Math.min(halfW * 2 * (wide ? 0.62 : 0.95), halfH * 2 * 1.25);

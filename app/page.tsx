@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
 
 const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
+const MacbookHero = dynamic(() => import("./MacbookHero"), { ssr: false, loading: () => <section className="mac" aria-label="Intro" /> });
 
 
 type Project = {
@@ -280,6 +281,7 @@ export default function Home() {
   return (
     <main>
       <AsciiPlane stunt={stunt} focus={focus} />
+      <MacbookHero />
 
       <section className="intro" id="top">
         <h1>aaditya shah</h1>
