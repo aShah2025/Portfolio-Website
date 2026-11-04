@@ -143,7 +143,7 @@ export const metadata: Metadata = {
   },
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
   openGraph: {
-    title: SITE_TITLE,
+    title: "Aaditya Shah",
     description: SITE_DESCRIPTION,
     type: "website",
     url: SITE_URL,
@@ -151,18 +151,18 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og.jpg",
+        url: "/og-macbook.jpg",
         width: 1200,
-        height: 800,
-        alt: "Aaditya Shah — Builder, Designer, Engineer",
+        height: 630,
+        alt: "A 3D MacBook Pro running Claude Code, from Aaditya Shah's portfolio",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_TITLE,
+    title: "Aaditya Shah",
     description: SITE_DESCRIPTION,
-    images: ["/og.jpg"],
+    images: ["/og-macbook.jpg"],
   },
 };
 
