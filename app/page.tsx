@@ -33,7 +33,7 @@ const projects: Project[] = [
     stat: "IMPACTHACK 2026",
     features: ["Plain-English instructions and follow-ups", "Side-by-side routes with climb, busy-road miles, bike-lane %", "Avoid any street by name with automatic re-routing", "Shows its math instead of AI-written excuses"],
     facts: [["Built for", "ImpactHack 2026"], ["Stack", "Python / Gemini / Valhalla"], ["Area", "California"]],
-    links: [["Live", "https://wayfinderbike.netlify.app"], ["Devpost", "https://devpost.com/software/wayfinder-wsea57"], ["iOS code", "https://github.com/aShah2025/Wayfinder"]],
+    links: [["Live", "https://wayfinderbike.netlify.app"], ["Devpost", "https://devpost.com/software/wayfinder-wsea57"], ["Code", "https://github.com/aShah2025/Wayfinder"]],
   },
   {
     id: "culturerisk", number: "02", name: "CultureRisk", tag: "AI / Hackathon", color: "#7aa2f7", text: "#101417",
@@ -97,11 +97,11 @@ const projects: Project[] = [
   },
   {
     id: "formula-racer", number: "08", name: "Formula Racer", tag: "Game / 3D Racing", color: "#e5534b", text: "#ffffff",
-    short: "A 3D racing game in progress.",
+    short: "A 3D racing game in progress, built in Unity.",
     description: "A 3D racing game loosely inspired by the speed, cameras, and race-weekend energy of Formula 1 games. Still building it. Still improving the lap time.",
     stat: "IN DEVELOPMENT",
     features: ["Full 3D tracks and cars", "Cinematic racing cameras", "Race-weekend feel"],
-    facts: [["Genre", "3D racing"], ["Status", "In development"], ["Inspired by", "F1 games"]],
+    facts: [["Genre", "3D racing"], ["Engine", "Unity / C#"], ["Status", "In development"]],
   },
   {
     id: "winglab", number: "09", name: "WingLab", tag: "macOS / Physics", color: "#9fb6cc", text: "#101417",
