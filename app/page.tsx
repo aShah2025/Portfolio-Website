@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
 
 const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
-const MacbookHero = dynamic(() => import("./MacbookHero"), { ssr: false, loading: () => <section className="mac" aria-label="Intro" /> });
 
 
 type Project = {
@@ -155,7 +154,7 @@ const INFO: Record<string, Info> = {
   Xcode: { lead: "Apple's IDE for building and shipping Apple apps.", how: "It compiles Swift, runs apps in the iOS Simulator or on a real phone, shows live SwiftUI previews, debugs with breakpoints, profiles with Instruments, and signs and uploads builds to the App Store.", use: "⌘R    run in the simulator\n⌘U    run tests\n⌘⇧K   clean build\n⌥⌘↩   show the preview canvas", mine: "Every iOS app I've built." },
   "VS Code": { lead: "A lightweight editor that becomes an IDE through extensions.", how: "It's built on Electron. Language servers give it autocomplete and errors for almost any language, and it has a built-in terminal, git and debugger.", use: "code .   open this folder\n⌘P       jump to a file\n⌘⇧P      command palette\n⌃`       terminal", mine: "Web projects like CultureRisk and this site." },
   PyCharm: { lead: "JetBrains' IDE made just for Python.", how: "It indexes the whole project, so autocomplete, refactoring and find-usages understand your code. It manages virtual environments and has a visual debugger and test runner.", use: "open a folder, set the interpreter to .venv\n⌃R   run\n⌃D   debug\n⇧⇧   search everything", mine: "Python work like Wayfinder's backend." },
-  "Claude Code": { lead: "Anthropic's AI coding agent that works in the terminal.", how: "You describe a task in plain English. It reads the repo, plans, edits files, and runs commands like tests and builds, asking before anything risky. It works on the real project, not a copy.", use: "npm install -g @anthropic-ai/claude-code\ncd my-project\nclaude\n> add a dark mode toggle", mine: "This site, including the 3D MacBook up top." },
+  "Claude Code": { lead: "Anthropic's AI coding agent that works in the terminal.", how: "You describe a task in plain English. It reads the repo, plans, edits files, and runs commands like tests and builds, asking before anything risky. It works on the real project, not a copy.", use: "npm install -g @anthropic-ai/claude-code\ncd my-project\nclaude\n> add a dark mode toggle", mine: "This site." },
   Codex: { lead: "OpenAI's coding agent, in the terminal and the cloud.", how: "It reads your repo, makes changes in a sandbox, runs commands, and shows you the diff to accept. The cloud version can work on several tasks in parallel.", use: "npm install -g @openai/codex\ncd my-project\ncodex\n> fix the failing test", mine: "A second opinion on tricky bugs." },
 };
 const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
@@ -338,7 +337,6 @@ export default function Home() {
   return (
     <main>
       <AsciiPlane stunt={stunt} focus={focus} />
-      <MacbookHero />
 
       <section className="intro" id="top">
         <h1>aaditya shah</h1>

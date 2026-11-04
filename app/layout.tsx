@@ -151,10 +151,10 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og-macbook.jpg",
+        url: "/og.jpg",
         width: 1200,
-        height: 630,
-        alt: "A 3D MacBook Pro running Claude Code, from Aaditya Shah's portfolio",
+        height: 800,
+        alt: "Aaditya Shah's portfolio: apps, games, and experiments",
       },
     ],
   },
@@ -162,7 +162,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Aaditya Shah",
     description: SITE_DESCRIPTION,
-    images: ["/og-macbook.jpg"],
+    images: ["/og.jpg"],
   },
 };
 
