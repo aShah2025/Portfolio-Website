@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 const IMAGE = "/images/great-wave.webp";
 const PAPER = "#f5f6f2";
-const DURATION = 4800;
+const DURATION = 5200;
 const HOLD = 350;
 const ZOOM_END = 2500;
 const CRASH_START = 2750;
@@ -13,10 +13,9 @@ const INKS = ["#a8bac4", "#8fa7b5", "#7392a6", "#557d96", "#3d6b88", "#2c5b7b", 
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const ease = (value: number) => { const t = clamp(value); return t * t * (3 - 2 * t); };
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
-const hash = (x: number, y: number) => { const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return value - Math.floor(value); };
 
 type Glyph = { column: number; density: number };
-type WaveGlyph = { x: number; y: number; column: number; tone: number; seed: number; packet: number };
+type WaveGlyph = { x: number; y: number; column: number; tone: number };
 
 /** The finite opening runs independently of the portfolio's idle current. */
 export default function WaveIntro() {
@@ -107,7 +106,7 @@ export default function WaveIntro() {
         const glyph = glyphLookup[Math.round(strength * 255)];
         if (CHARACTERS[glyph.column] === " ") continue;
         const x = column * cellWidth, y = row * cellHeight;
-        characters.push({ x, y, column: glyph.column, tone: Math.min(INKS.length - 1, Math.floor(strength * INKS.length)), seed: hash(column, row), packet: hash(Math.floor(x / 24), Math.floor(y / 24)) });
+        characters.push({ x, y, column: glyph.column, tone: Math.min(INKS.length - 1, Math.floor(strength * INKS.length)) });
       }
       return characters;
     };
@@ -118,21 +117,33 @@ export default function WaveIntro() {
     };
 
     const crash = (progress: number) => {
-      // A coherent crest folds first. Small packets then shear into a falling stream,
-      // rather than replacing the wave with an unrelated field of confetti.
       if (!crashGlyphs) crashGlyphs = sampleWave(1);
+      const image = crop(1);
+      // Work in the print's coordinates, so the same crest turns over in every crop.
+      const hingeX = image.x + image.width * 0.34;
+      const hingeY = image.y + image.height * 0.66;
+      const curl = ease(progress / 0.5);
+      const breaking = ease((progress - 0.3) / 0.44);
+      const wash = ease((progress - 0.66) / 0.34);
+      const angle = 1.18 * curl, cosine = Math.cos(angle), sine = Math.sin(angle);
+      const shoreline = height * 0.83;
+
+      // One smooth flow carries adjacent characters together. The lower water anchors
+      // the overturning crest, then the whole body flattens into a shoreward wash.
       for (const glyph of crashGlyphs) {
-        const nx = glyph.x / width, ny = glyph.y / height;
-        const distance = Math.hypot((nx - 0.52) * 1.15, (ny - 0.35) * 0.8);
-        const delay = Math.min(0.44, distance * 0.4 + glyph.packet * 0.075);
-        const fall = clamp((progress - delay) / (1 - delay));
-        const crest = Math.exp(-((nx - 0.5) ** 2 / 0.1 + (ny - 0.32) ** 2 / 0.11));
-        const sweep = width * (0.08 * fall + 0.46 * fall * fall) * (0.85 + glyph.seed * 0.35);
-        const fold = Math.sin(fall * Math.PI) * width * 0.11 * crest;
-        const ripple = Math.sin(ny * 19 + fall * 7 + glyph.packet * 3) * width * 0.025 * fall;
-        const drop = height * (0.08 * fall + 1.5 * fall * fall) * (0.9 + glyph.seed * 0.2);
-        const curl = height * 0.12 * crest * ease(fall * 2);
-        drawGlyph(glyph, glyph.x + sweep + fold + ripple, glyph.y + drop + curl);
+        const sourceX = (glyph.x - image.x) / image.width;
+        const sourceY = (glyph.y - image.y) / image.height;
+        const upper = ease((0.69 - sourceY) / 0.45);
+        const crest = Math.exp(-(((sourceX - 0.39) / 0.3) ** 2)) * upper;
+        const dx = glyph.x - hingeX, dy = glyph.y - hingeY;
+        const foldedX = glyph.x + (dx * cosine - dy * sine - dx) * crest;
+        const foldedY = glyph.y + (dx * sine + dy * cosine - dy) * crest;
+        const washX = glyph.x * 1.4 - width * 0.12;
+        const washY = shoreline + (glyph.y - shoreline) * 0.15
+          + height * 0.018 * Math.sin(glyph.x / width * Math.PI * 2);
+        const x = mix(foldedX, washX, breaking) + width * 0.24 * wash;
+        const y = mix(foldedY, washY, breaking) + height * 1.1 * wash * wash;
+        drawGlyph(glyph, x, y);
       }
     };
 
@@ -150,7 +161,8 @@ export default function WaveIntro() {
       if (at >= CRASH_START) {
         crash(clamp((at - CRASH_START) / (DURATION - CRASH_START)));
         original.style.visibility = "hidden";
-        phase("crashing");
+        const progress = (at - CRASH_START) / (DURATION - CRASH_START);
+        phase(progress < 0.3 ? "curling" : progress < 0.66 ? "breaking" : "receding");
         return;
       }
       const zoom = ease((at - HOLD) / (ZOOM_END - HOLD));
