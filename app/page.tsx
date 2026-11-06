@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
+import WaveIntro from "./WaveIntro";
 
-const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
+const OceanCanvas = dynamic(() => import("./OceanCanvas"), { ssr: false });
 
 
 type Project = {
@@ -157,7 +158,6 @@ const INFO: Record<string, Info> = {
   "Claude Code": { lead: "Anthropic's AI coding agent that works in the terminal.", how: "You describe a task in plain English. It reads the repo, plans, edits files, and runs commands like tests and builds, asking before anything risky. It works on the real project, not a copy.", use: "npm install -g @anthropic-ai/claude-code\ncd my-project\nclaude\n> add a dark mode toggle", mine: "This site." },
   Codex: { lead: "OpenAI's coding agent, in the terminal and the cloud.", how: "It reads your repo, makes changes in a sandbox, runs commands, and shows you the diff to accept. The cloud version can work on several tasks in parallel.", use: "npm install -g @openai/codex\ncd my-project\ncodex\n> fix the failing test", mine: "A second opinion on tricky bugs." },
 };
-const MACHINE: [string, string][] = [["model", "MacBook Pro"], ["chip", "M5 Pro"], ["memory", "24 GB"], ["storage", "1 TB SSD"], ["finish", "Space Black"]];
 const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
 // A text progress bar: [#######---]
@@ -192,7 +192,7 @@ type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
   const stunt = useRef(0);
-  const focus = useRef<string | null>(null); // the open row, whose scene the plane canvas shows
+  const focus = useRef<string | null>(null);
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
     id: p.id, name: p.name, meta: p.tag,
@@ -219,7 +219,7 @@ export default function Home() {
       body: (
         <>
           <p className="lead">Private pilot licence, eventually.</p>
-          <p>That&apos;s the plane up there. Ground school first, then the first solo, then the checkride. For now it&apos;s simulators and WingLab.</p>
+          <p>Ground school first, then the first solo, then the checkride. For now it&apos;s simulators and WingLab.</p>
           <pre className="track">{`${bar(1, 10)} ground school\n${bar(0, 10)} first solo\n${bar(0, 10)} checkride`}</pre>
         </>
       ),
@@ -259,8 +259,8 @@ export default function Home() {
   const toggle = (id: string) => {
     const opening = openProject !== id;
     setOpenProject(opening ? id : null);
-    focus.current = opening && id !== "flying" ? id : null;
-    if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
+    focus.current = opening ? id : null;
+    if (opening && id === "flying") stunt.current += 1;
   };
 
   // a row of chips; clicking one opens its notes underneath
@@ -313,19 +313,24 @@ export default function Home() {
 
   return (
     <main>
-      <AsciiPlane stunt={stunt} focus={focus} />
+      <link rel="preload" as="image" href="/images/great-wave.webp" fetchPriority="high" />
+      <OceanCanvas stunt={stunt} focus={focus} />
 
-      <section className="intro" id="top">
-        <h1>aaditya shah</h1>
-        <p className="intro-role">student / builder</p>
-        <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
+      <section className="intro" id="top" data-wave-phase="loading" aria-labelledby="intro-title">
+        <WaveIntro />
+        <div className="wave-caption">
+          <h1 id="intro-title">aaditya shah</h1>
+          <a className="enter" href="#index">enter <span aria-hidden="true">↗</span></a>
+        </div>
+        <a className="art-credit" href="https://www.metmuseum.org/art/collection/search/56353" target="_blank" rel="noreferrer">Hokusai · The Great Wave <span aria-hidden="true">↗</span></a>
+        <noscript><style>{`.wave-caption { opacity: 1 !important; visibility: visible !important; } .wave-original { opacity: .12; }`}</style></noscript>
       </section>
 
       <div className="index" id="index">
         <header className="who">
           <h2>aaditya</h2>
-          <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
-          <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
+          <p className="prompt">student / builder</p>
+          <p className="where"><span aria-hidden="true">≈</span> Leland High, San Jose, CA</p>
           <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
         </header>
 
@@ -336,9 +341,8 @@ export default function Home() {
           {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
         </section>
 
-        <section aria-labelledby="h-setup">
-          <h3 id="h-setup">setup</h3>
-          <dl className="spec">{MACHINE.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+        <section aria-labelledby="h-tools">
+          <h3 id="h-tools">tools</h3>
           {chips(TOOLS)}
         </section>
         <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
