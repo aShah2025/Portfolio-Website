@@ -23,15 +23,22 @@ export default function WaveIntro() {
     const context = canvas.getContext("2d");
     const sampleCanvas = document.createElement("canvas"), sample = sampleCanvas.getContext("2d", { willReadFrequently: true });
     const atlas = document.createElement("canvas"), ink = atlas.getContext("2d", { willReadFrequently: true });
+    const waveLayer = document.createElement("canvas"), waveContext = waveLayer.getContext("2d");
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let reduced = motion.matches, disposed = false, ready = false, finished = false;
-    let raf = 0, startedAt = 0, elapsed = 0, drawnAt = -Infinity;
+    let raf = 0, startedAt = 0, elapsed = 0, resourcesReady = false;
     let width = 1, height = 1, ratio = 1, columns = 1, rows = 1;
     let cellWidth = 4, cellHeight = 7, tileWidth = 1, tileHeight = 1, fontSize = 7;
     let portrait = false;
     let source: SourceGlyph[] = [], spray: WaveSpray | null = null;
+    let particleX = new Float32Array(0), particleY = new Float32Array(0);
+    let spriteX = new Uint16Array(0), spriteY = new Uint16Array(0), next = new Int32Array(0);
+    const heads = new Int32Array(16);
+    const opacity = Array.from({ length: heads.length }, (_, i) => (i + .5) / heads.length);
     const glyphLookup = new Uint8Array(256);
     const water = { x: 0, y: 0, alpha: 0 };
+    const renderTimes: number[] = [], frameIntervals: number[] = [];
+    let lastPaint = 0;
     const phase = (value: string) => {
       if (canvas.dataset.wavePhase === value) return;
       canvas.dataset.wavePhase = value;
@@ -47,13 +54,19 @@ export default function WaveIntro() {
         canvas.style.opacity = "1";
       }
       intro?.style.setProperty("--name-reveal", "1"); phase("ready");
+      if (renderTimes.length) {
+        const percentile = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length * .95)] || 0;
+        canvas.dataset.wavePerf = JSON.stringify({ frames: renderTimes.length, particles: spray?.sourceIndex.length || 0,
+          renderP95: +percentile(renderTimes).toFixed(2), intervalP95: +percentile(frameIntervals).toFixed(2),
+          fps: +(1000 * frameIntervals.length / frameIntervals.reduce((sum, value) => sum + value, 0)).toFixed(1) });
+      }
     };
     const fail = () => {
       if (disposed) return;
       complete(); original.style.visibility = "visible"; original.style.opacity = ".12";
       canvas.style.opacity = "0"; phase("error");
     };
-    if (!context || !sample || !ink) { fail(); return; }
+    if (!context || !sample || !ink || !waveContext) { fail(); return; }
 
     const imageFrame = () => {
       const scale = portrait ? width * 1.4 / original.naturalWidth
@@ -106,6 +119,20 @@ export default function WaveIntro() {
       }
       spray = createWaveSpray(source, width, height,
         { x: image.x + image.width * .54, y: image.y + image.height * .30 });
+      waveLayer.width = canvas.width; waveLayer.height = canvas.height;
+      waveContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+      for (const glyph of source) {
+        waveContext.drawImage(atlas, glyph.column * tileWidth, glyph.tone * tileHeight, tileWidth, tileHeight,
+          glyph.x - cellWidth * .5, glyph.y - cellHeight * .5, tileWidth / ratio, tileHeight / ratio);
+      }
+      const count = spray.sourceIndex.length;
+      particleX = new Float32Array(count); particleY = new Float32Array(count);
+      spriteX = new Uint16Array(count); spriteY = new Uint16Array(count); next = new Int32Array(count);
+      for (let i = 0; i < count; i++) {
+        const glyph = source[spray.sourceIndex[i]];
+        spriteX[i] = glyphLookup[Math.round(glyph.strength * .9 * 255)] * tileWidth;
+        spriteY[i] = glyph.tone * tileHeight;
+      }
     };
 
     const paint = () => {
@@ -121,55 +148,71 @@ export default function WaveIntro() {
         const image = imageFrame(); context.globalAlpha = 1 - ascii;
         context.drawImage(original, image.x, image.y, image.width, image.height);
       }
-      // Every letter begins on the real print. The crest carries those letters
-      // sideways into spray; the same letters then fall under gravity.
+      // Preserve the fine detail in one cached layer. Only the light crest spray
+      // needs individual updates as the wave breaks to the right and disappears.
+      const body = 1 - ease((time - .18) / .72);
+      if (body > 0) {
+        context.globalAlpha = ascii * body;
+        context.drawImage(waveLayer, width * .10 * ease(time / .65), 0, width, height);
+      }
+      heads.fill(-1);
       for (let i = 0; i < spray.sourceIndex.length; i++) {
         sampleWaveSpray(spray, i, time, water);
-        const alpha = water.alpha * ascii;
-        if (alpha < .01 || water.x < -cellWidth || water.x > width + cellWidth || water.y < -cellHeight || water.y > height + cellHeight) continue;
-        const glyph = source[spray.sourceIndex[i]];
-        const foam = spray.foam[i] === 1;
-        const column = foam ? glyphLookup[Math.round(glyph.strength * .68 * 255)] : glyph.column;
-        const tone = foam ? Math.max(0, glyph.tone - 1) : glyph.tone;
-        context.globalAlpha = alpha;
-        context.drawImage(atlas, column * tileWidth, tone * tileHeight, tileWidth, tileHeight,
-          water.x - cellWidth * .5, water.y - cellHeight * .5, tileWidth / ratio, tileHeight / ratio);
+        if (water.alpha < .04 || water.x < -cellWidth || water.x > width + cellWidth || water.y < -cellHeight || water.y > height + cellHeight) continue;
+        const bucket = Math.min(heads.length - 1, Math.floor(water.alpha * heads.length));
+        particleX[i] = water.x; particleY[i] = water.y;
+        next[i] = heads[bucket]; heads[bucket] = i;
+      }
+      for (let bucket = 0; bucket < heads.length; bucket++) {
+        context.globalAlpha = opacity[bucket] * ascii;
+        for (let i = heads[bucket]; i !== -1; i = next[i]) {
+          context.drawImage(atlas, spriteX[i], spriteY[i], tileWidth, tileHeight,
+            particleX[i] - cellWidth * .5, particleY[i] - cellHeight * .5, tileWidth / ratio, tileHeight / ratio);
+        }
       }
       context.globalAlpha = 1;
-      const name = ease((time - (SPRAY_DURATION - .8)) / .8);
+      const name = ease((time - (SPRAY_DURATION - .65)) / .65);
       intro?.style.setProperty("--name-reveal", String(name));
-      phase(name > .01 ? "revealing" : time >= 2.8 ? "falling" : time >= .85 ? "spraying" : time > 0 ? "breaking" : ascii > 0 ? "converting" : "painting");
+      phase(name > .01 ? "revealing" : time >= 1.65 ? "falling" : time >= .6 ? "spraying" : time > 0 ? "breaking" : ascii > 0 ? "converting" : "painting");
     };
     const resize = () => {
       const bounds = intro?.getBoundingClientRect();
-      width = Math.max(1, Math.round(bounds?.width || window.innerWidth));
-      height = Math.max(1, Math.round(bounds?.height || window.innerHeight));
+      const w = Math.max(1, Math.round(bounds?.width || window.innerWidth));
+      const h = Math.max(1, Math.round(bounds?.height || window.innerHeight));
+      const dpr = Math.min(1.25, window.devicePixelRatio || 1, Math.sqrt(2_000_000 / (w * h)));
+      if (w === width && h === height && dpr === ratio && resourcesReady) return;
+      width = w; height = h; ratio = dpr;
       portrait = height > width * 1.15;
-      ratio = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(5_000_000 / (width * height)));
       canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
       const scale = Math.max(1, Math.sqrt(width * height / 1_200_000));
       fontSize = 7 * scale; cellWidth = 4 * scale; cellHeight = 7 * scale;
       columns = Math.ceil(width / cellWidth); rows = Math.ceil(height / cellHeight);
       sampleCanvas.width = columns; sampleCanvas.height = rows;
-      buildAtlas();
       if (finished || reduced) { complete(); return; }
-      if (ready) buildWave();
+      if (ready) { buildAtlas(); buildWave(); resourcesReady = true; }
       paint();
     };
     const frame = (now: number) => {
       raf = 0;
       if (disposed || !ready || finished || document.hidden) return;
       if (!startedAt) startedAt = now - elapsed;
-      if (now - drawnAt >= 1000 / 30) { elapsed = now - startedAt; drawnAt = now; paint(); }
+      elapsed = now - startedAt;
+      if (lastPaint) frameIntervals.push(now - lastPaint);
+      lastPaint = now;
+      const before = performance.now(); paint(); renderTimes.push(performance.now() - before);
       if (!finished) raf = requestAnimationFrame(frame);
     };
     const resume = () => {
-      if (document.hidden) { cancelAnimationFrame(raf); raf = 0; startedAt = 0; }
+      if (document.hidden) { cancelAnimationFrame(raf); raf = 0; startedAt = 0; lastPaint = 0; }
       else if (ready && !finished && !raf) raf = requestAnimationFrame(frame);
     };
     const onMotion = () => { reduced = motion.matches; if (reduced) complete(); };
     resize();
     const observer = new ResizeObserver(resize); if (intro) observer.observe(intro);
+    const visibility = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting && entry.boundingClientRect.bottom <= 0) complete();
+    });
+    if (intro) visibility.observe(intro);
     window.addEventListener("resize", resize);
     document.addEventListener("visibilitychange", resume);
     motion.addEventListener("change", onMotion);
@@ -182,7 +225,7 @@ export default function WaveIntro() {
       ready = true; resize(); if (!document.hidden) raf = requestAnimationFrame(frame);
     }).catch(fail);
     return () => {
-      disposed = true; cancelAnimationFrame(raf); observer.disconnect();
+      disposed = true; cancelAnimationFrame(raf); observer.disconnect(); visibility.disconnect();
       original.onload = null; original.onerror = null;
       window.removeEventListener("resize", resize); document.removeEventListener("visibilitychange", resume); motion.removeEventListener("change", onMotion);
     };
