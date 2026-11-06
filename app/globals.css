@@ -22,7 +22,8 @@ main { position: relative; z-index: 1; }
 .wave-art, .wave-original { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .wave-original { z-index: 0; object-fit: cover; }
 .wave-art { z-index: 1; }
-.wave-caption { position: absolute; z-index: 2; left: 50%; top: 48%; transform: translate(-50%, -50%); opacity: 0; visibility: hidden; transition: opacity .8s ease, visibility .8s; text-align: center; white-space: nowrap; }
+.wave-caption { position: absolute; z-index: 2; left: 50%; top: 48%; transform: translate(-50%, -50%); opacity: var(--name-reveal, 0); visibility: hidden; text-align: center; white-space: nowrap; }
+.intro[data-wave-phase="revealing"] .wave-caption { visibility: visible; }
 .intro[data-wave-phase="ready"] .wave-caption, .intro[data-wave-phase="error"] .wave-caption { opacity: 1; visibility: visible; }
 .intro h1 { margin: 0; font: 400 16px/1.4 var(--mono); letter-spacing: .025em; }
 .enter { display: inline-flex; align-items: center; gap: 16px; margin-top: 18px; padding: 8px 0; font: 400 11px/1.4 var(--mono); color: var(--muted); }
@@ -32,9 +33,6 @@ main { position: relative; z-index: 1; }
 .prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .06em; }
 .art-credit { position: absolute; z-index: 3; left: 28px; bottom: 29px; font: 400 9px/1.4 var(--mono); color: #587083; }
 .art-credit:hover { color: #1e405d; }
-@media (max-aspect-ratio: 20/23) {
-  .wave-original { object-position: 38% 50%; }
-}
 @media (max-width: 699px) {
   .art-credit { left: 16px; bottom: 18px; font-size: 8px; }
 }

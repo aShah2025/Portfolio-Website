@@ -1,24 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { drawWaveBreaker } from "./waveBreaker";
+import { prepareFoamWash, sampleFoamWash } from "./foamWash";
 
 const IMAGE = "/images/great-wave.webp";
 const PAPER = "#f5f6f2";
-const DURATION = 5200;
+const DURATION = 6100;
 const HOLD = 350;
-const ZOOM_END = 2500;
-const CRASH_START = 2750;
 const CHARACTERS = " .,:;!|/\\iltfrcLJTU+*oazCYXZmwkbdpq0OQ#%&@$";
 const INKS = ["#a8bac4", "#8fa7b5", "#7392a6", "#557d96", "#3d6b88", "#2c5b7b", "#204c6b", "#173f5d"];
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
-const ease = (value: number) => { const t = clamp(value); return t * t * (3 - 2 * t); };
-const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
+const clamp = (n: number) => Math.max(0, Math.min(1, n));
+const ease = (n: number) => { const t = clamp(n); return t * t * (3 - 2 * t); };
+const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
-type Glyph = { column: number; density: number };
-type WaveGlyph = { x: number; y: number; column: number; tone: number; strength: number };
-
-/** The finite opening runs independently of the portfolio's idle current. */
 export default function WaveIntro() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalRef = useRef<HTMLImageElement>(null);
@@ -28,27 +22,30 @@ export default function WaveIntro() {
     if (!canvas || !original) return;
     const intro = canvas.closest<HTMLElement>(".intro");
     const context = canvas.getContext("2d");
-    if (!context) { original.style.visibility = "hidden"; if (intro) intro.dataset.wavePhase = "error"; return; }
+    const foam = document.createElement("canvas"), foamContext = foam.getContext("2d");
+    const atlas = document.createElement("canvas"), ink = atlas.getContext("2d", { willReadFrequently: true });
+    const phase = (value: string) => {
+      canvas.dataset.wavePhase = value;
+      if (intro) intro.dataset.wavePhase = value;
+    };
+    const fail = () => {
+      original.style.visibility = "hidden";
+      if (context) { context.setTransform(1, 0, 0, 1, 0, 0); context.clearRect(0, 0, canvas.width, canvas.height); }
+      intro?.style.setProperty("--name-reveal", "1");
+      phase("error");
+    };
+    if (!context || !foamContext || !ink) { fail(); return; }
+
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let reduced = motion.matches, disposed = false, ready = false, finished = false;
     let raf = 0, startedAt = 0, elapsed = 0, drawnAt = -Infinity;
     let width = 1, height = 1, ratio = 1, columns = 1, rows = 1;
-    let cellWidth = 4.5, cellHeight = 8, tileWidth = 1, tileHeight = 1, fontSize = 8;
-    let portrait = false, glyphs: Glyph[] = [], glyphLookup: Glyph[] = [];
-    let inkCached = false;
-    const sampling = document.createElement("canvas");
-    const sample = sampling.getContext("2d", { willReadFrequently: true });
-    const atlas = document.createElement("canvas"), ink = atlas.getContext("2d", { willReadFrequently: true });
-    const inkSource = document.createElement("canvas"), sourceInk = inkSource.getContext("2d");
-    if (!sample || !ink || !sourceInk) { original.style.visibility = "hidden"; if (intro) intro.dataset.wavePhase = "error"; return; }
-
-    const phase = (value: string) => {
-      if (canvas.dataset.wavePhase !== value) {
-        canvas.dataset.wavePhase = value;
-        if (intro) intro.dataset.wavePhase = value;
-      }
-    };
-    phase("loading");
+    let cellWidth = 4, cellHeight = 7, tileWidth = 1, tileHeight = 1, fontSize = 7;
+    let portrait = false;
+    let foamPixels: ImageData;
+    let strengths = new Float32Array(1);
+    const glyphLookup = new Uint8Array(256);
+    const foamSample = { cover: 0, ink: 0 };
 
     const buildAtlas = () => {
       tileWidth = Math.ceil(cellWidth * ratio); tileHeight = Math.ceil(cellHeight * ratio);
@@ -62,132 +59,79 @@ export default function WaveIntro() {
           ink.fillText(CHARACTERS[column], (column + 0.5) * tileWidth / ratio, (row + 0.5) * tileHeight / ratio);
         }
       });
-      // Actual font coverage defines the ramp, so punctuation, outlines and dark wave shapes
-      // receive the appropriate amount of ink across different device pixel ratios.
-      glyphs = Array.from(CHARACTERS, (_, column) => {
+      const glyphs = Array.from(CHARACTERS, (_, column) => {
         const pixels = ink.getImageData(column * tileWidth, 0, tileWidth, tileHeight).data;
         let alpha = 0;
-        for (let offset = 3; offset < pixels.length; offset += 4) alpha += pixels[offset] / 255;
+        for (let i = 3; i < pixels.length; i += 4) alpha += pixels[i] / 255;
         return { column, density: alpha / (tileWidth * tileHeight) };
       }).sort((a, b) => a.density - b.density);
       const maximum = glyphs[glyphs.length - 1]?.density || 1;
-      glyphs.forEach((glyph) => { glyph.density /= maximum; });
-      glyphLookup = Array.from({ length: 256 }, (_, index) => glyphs.reduce((nearest, glyph) => Math.abs(glyph.density - index / 255) < Math.abs(nearest.density - index / 255) ? glyph : nearest));
+      for (const glyph of glyphs) glyph.density /= maximum;
+      for (let i = 0; i < 256; i++) {
+        glyphLookup[i] = glyphs.reduce((nearest, glyph) => Math.abs(glyph.density - i / 255) < Math.abs(nearest.density - i / 255) ? glyph : nearest).column;
+      }
     };
 
-    const crop = (amount: number) => {
-      const cover = Math.max(width / original.naturalWidth, height / original.naturalHeight);
-      const scale = cover * mix(1, portrait ? 1 : 1.25, amount);
-      const sourceX = mix(portrait ? 0.42 : 0.5, portrait ? 0.46 : 0.65, amount);
-      const sourceY = mix(0.5, portrait ? 0.4 : 0.36, amount);
-      const screenX = mix(0.5, portrait ? 0.5 : 0.68, amount);
-      const screenY = mix(0.5, portrait ? 0.42 : 0.4, amount);
-      return {
-        x: width * screenX - original.naturalWidth * sourceX * scale,
-        y: height * screenY - original.naturalHeight * sourceY * scale,
-        width: original.naturalWidth * scale,
-        height: original.naturalHeight * scale,
-      };
-    };
-
-    const sampleWave = (amount: number): WaveGlyph[] => {
-      const image = crop(amount);
-      sample.setTransform(1, 0, 0, 1, 0, 0);
-      sample.fillStyle = PAPER; sample.fillRect(0, 0, columns, rows);
-      sample.drawImage(original, image.x / cellWidth, image.y / cellHeight, image.width / cellWidth, image.height / cellHeight);
-      const pixels = sample.getImageData(0, 0, columns, rows).data;
-      const characters: WaveGlyph[] = [];
-      for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
-        const offset = (row * columns + column) * 4;
-        const red = pixels[offset], green = pixels[offset + 1], blue = pixels[offset + 2];
-        const luminance = (red * 0.3 + green * 0.59 + blue * 0.11) / 255;
-        // Aged paper and its brown mottling become open space; Hokusai's blue ink remains.
-        const blueInk = clamp((blue - red + 12) / 55);
-        const strength = Math.pow(clamp((0.86 - luminance) / 0.7) * blueInk, 1.05);
-        if (strength < 0.1) continue;
-        const glyph = glyphLookup[Math.round(strength * 255)];
-        if (CHARACTERS[glyph.column] === " ") continue;
-        const x = column * cellWidth, y = row * cellHeight;
-        characters.push({ x, y, column: glyph.column, tone: Math.min(INKS.length - 1, Math.floor(strength * INKS.length)), strength });
-      }
-      return characters;
-    };
-
-    const drawGlyph = (glyph: WaveGlyph, x = glyph.x, y = glyph.y) => {
-      if (x < -cellWidth || x > width || y < -cellHeight || y > height) return;
-      context.drawImage(atlas, glyph.column * tileWidth, glyph.tone * tileHeight, tileWidth, tileHeight, x, y, tileWidth / ratio, tileHeight / ratio);
-    };
-
-    const crash = (progress: number) => {
-      if (!inkCached) {
-        const density = sourceInk.createImageData(columns, rows);
-        for (let offset = 3; offset < density.data.length; offset += 4) density.data[offset] = 255;
-        for (const glyph of sampleWave(1)) {
-          const offset = (Math.round(glyph.y / cellHeight) * columns + Math.round(glyph.x / cellWidth)) * 4;
-          density.data[offset] = density.data[offset + 1] = density.data[offset + 2] = Math.round(glyph.strength * 255);
-        }
-        sourceInk.putImageData(density, 0, 0);
-        inkCached = true;
-      }
-      sample.setTransform(columns / width, 0, 0, rows / height, 0, 0);
-      const image = crop(1);
-      if (portrait) {
-        const pullback = ease(progress / 0.32);
-        const targetWidth = Math.min(image.width, width * 2.3);
-        const targetHeight = targetWidth * original.naturalHeight / original.naturalWidth;
-        image.x = mix(image.x, width * 0.5 - targetWidth * 0.52, pullback);
-        image.y = mix(image.y, height * 0.42 - targetHeight * 0.4, pullback);
-        image.width = mix(image.width, targetWidth, pullback);
-        image.height = mix(image.height, targetHeight, pullback);
-      }
-      drawWaveBreaker(sample, width, height, image, progress);
-      sample.globalAlpha = 1 - ease(progress / 0.18);
-      sample.drawImage(inkSource, 0, 0, width, height);
-      sample.globalAlpha = 1;
-      const pixels = sample.getImageData(0, 0, columns, rows).data;
-      // Water changes shape underneath a stationary type grid. Characters never rotate,
-      // stretch, or separate into particles as the lip breaks and the foam runs out.
-      for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
-        const strength = pixels[(row * columns + column) * 4] / 255;
-        if (strength < 0.1) continue;
-        const glyph = glyphLookup[Math.round(strength * 255)];
-        const tone = Math.min(INKS.length - 1, Math.floor(strength * INKS.length));
-        drawGlyph({ x: column * cellWidth, y: row * cellHeight, column: glyph.column, tone, strength });
-      }
+    const crop = (progress: number) => {
+      const push = ease(progress / 0.55);
+      const scale = Math.max(width / original.naturalWidth, height / original.naturalHeight) * mix(1, 1.06, push);
+      const w = original.naturalWidth * scale, h = original.naturalHeight * scale;
+      return { x: width * .5 - w * mix(.5, portrait ? .51 : .52, push),
+        y: height * .5 - h * .5, width: w, height: h };
     };
 
     const paint = (at: number) => {
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
       context.globalAlpha = 1; context.fillStyle = PAPER; context.fillRect(0, 0, width, height);
       if (reduced || at >= DURATION) {
-        canvas.style.opacity = "1";
-        original.style.visibility = "hidden";
-        phase("ready");
-        return;
+        canvas.style.opacity = "1"; original.style.visibility = "hidden";
+        intro?.style.setProperty("--name-reveal", "1"); phase("ready"); return;
       }
       if (!ready || !original.naturalWidth) { canvas.style.opacity = "0"; return; }
-      canvas.style.opacity = "1";
-      if (at >= CRASH_START) {
-        crash(clamp((at - CRASH_START) / (DURATION - CRASH_START)));
-        original.style.visibility = "hidden";
-        const progress = (at - CRASH_START) / (DURATION - CRASH_START);
-        phase(progress < 0.32 ? "curling" : progress < 0.56 ? "plunging" : progress < 0.76 ? "breaking" : "receding");
-        return;
+      canvas.style.opacity = "1"; original.style.visibility = "hidden";
+      const progress = clamp((at - HOLD) / (DURATION - HOLD));
+      const image = crop(progress);
+      // The print stays intact. Once the incoming wash covers it, it is retired:
+      // the downward drain uncovers paper and the name, never the painting again.
+      if (progress < .65) context.drawImage(original, image.x, image.y, image.width, image.height);
+      const field = prepareFoamWash(width, height, progress,
+        { x: image.x + image.width * .54, y: image.y + image.height * .30 });
+      const ascii = ease((progress - .16) / .26);
+      const normalFoam = 1 - ascii;
+      const pixels = foamPixels.data;
+      for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+        const index = row * columns + column;
+        const water = sampleFoamWash(field, (column + .5) * width / columns, (row + .5) * height / rows, foamSample);
+        const shade = water.ink * normalFoam * .72;
+        const offset = index * 4;
+        pixels[offset] = 245 - 105 * shade;
+        pixels[offset + 1] = 246 - 70 * shade;
+        pixels[offset + 2] = 242 - 45 * shade;
+        pixels[offset + 3] = Math.round(water.cover * 255);
+        strengths[index] = water.ink;
       }
-      const zoom = ease((at - HOLD) / (ZOOM_END - HOLD));
-      const dissolve = ease((at - HOLD) / 1000);
-      const frame = crop(zoom);
-      if (dissolve < 1) {
-        context.globalAlpha = 1 - dissolve;
-        context.drawImage(original, frame.x, frame.y, frame.width, frame.height);
+      foamContext.putImageData(foamPixels, 0, 0);
+      context.imageSmoothingEnabled = true;
+      context.drawImage(foam, 0, 0, width, height);
+      // The same foam becomes ASCII as it surges upward; only its density moves.
+      // The character grid remains upright through the full-screen wash and drain.
+      if (ascii > 0) {
+        context.globalAlpha = ascii;
+        for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+          const strength = strengths[row * columns + column];
+          if (strength < .085) continue;
+          const glyph = glyphLookup[Math.round(clamp(strength) * 255)];
+          if (glyph === 0) continue;
+          const tone = Math.min(INKS.length - 1, Math.floor(strength * INKS.length));
+          context.drawImage(atlas, glyph * tileWidth, tone * tileHeight, tileWidth, tileHeight,
+            column * width / columns, row * height / rows, tileWidth / ratio, tileHeight / ratio);
+        }
+        context.globalAlpha = 1;
       }
-      if (dissolve > 0) {
-        context.globalAlpha = dissolve;
-        for (const glyph of sampleWave(zoom)) drawGlyph(glyph);
-      }
-      context.globalAlpha = 1;
-      original.style.visibility = "hidden";
-      phase(at >= HOLD + 1000 ? "ascii" : at >= HOLD ? "transition" : "painting");
+      const center = sampleFoamWash(field, width * .5, height * .48, foamSample);
+      const name = progress > .75 ? ease(1 - center.cover) : 0;
+      intro?.style.setProperty("--name-reveal", String(name));
+      phase(name > .01 ? "revealing" : progress >= .75 ? "draining" : progress >= .65 ? "covered" : progress >= .20 ? "washing" : progress > 0 ? "foaming" : "painting");
     };
 
     const resize = () => {
@@ -197,27 +141,22 @@ export default function WaveIntro() {
       portrait = height > width * 1.15;
       ratio = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(5_000_000 / (width * height)));
       canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-      // Keep the type readable while bounding work on very large screens.
-      const scale = Math.max(1, Math.sqrt(width * height / 1_800_000));
-      fontSize = 8 * scale; cellWidth = 4.5 * scale; cellHeight = 8 * scale;
+      const scale = Math.max(1, Math.sqrt(width * height / 1_200_000));
+      fontSize = 7 * scale; cellWidth = 4 * scale; cellHeight = 7 * scale;
       columns = Math.ceil(width / cellWidth); rows = Math.ceil(height / cellHeight);
-      sampling.width = columns; sampling.height = rows;
-      inkSource.width = columns; inkSource.height = rows;
-      inkCached = false;
-      buildAtlas();
-      paint(finished || reduced ? DURATION : elapsed);
+      foam.width = columns; foam.height = rows;
+      foamPixels = foamContext.createImageData(columns, rows);
+      strengths = new Float32Array(columns * rows);
+      buildAtlas(); paint(finished || reduced ? DURATION : elapsed);
     };
-
     const frame = (now: number) => {
       raf = 0;
-      if (disposed || !ready || finished) return;
-      if (document.hidden) return;
+      if (disposed || !ready || finished || document.hidden) return;
       if (!startedAt) startedAt = now - elapsed;
       if (now - drawnAt >= 1000 / 30) {
-        elapsed = Math.min(DURATION, now - startedAt); drawnAt = now;
-        paint(reduced ? DURATION : elapsed);
+        elapsed = Math.min(DURATION, now - startedAt); drawnAt = now; paint(elapsed);
       }
-      if (reduced || elapsed >= DURATION) { finished = true; return; }
+      if (elapsed >= DURATION) { finished = true; return; }
       raf = requestAnimationFrame(frame);
     };
     const resume = () => {
@@ -226,15 +165,7 @@ export default function WaveIntro() {
     };
     const onMotion = () => {
       reduced = motion.matches;
-      if (reduced) {
-        cancelAnimationFrame(raf); raf = 0; finished = true; elapsed = DURATION; paint(DURATION);
-      }
-    };
-    const fail = () => {
-      if (disposed) return;
-      original.style.visibility = "hidden";
-      canvas.style.opacity = "1";
-      phase("error");
+      if (reduced) { cancelAnimationFrame(raf); raf = 0; finished = true; elapsed = DURATION; paint(DURATION); }
     };
     let imageResolved = false;
     const imageReady = new Promise<void>((resolve, reject) => {
@@ -253,8 +184,7 @@ export default function WaveIntro() {
       ready = true; resize();
       if (reduced) { finished = true; elapsed = DURATION; paint(DURATION); }
       else raf = requestAnimationFrame(frame);
-    }).catch(fail);
-
+    }).catch(() => { if (!disposed) fail(); });
     return () => {
       disposed = true; cancelAnimationFrame(raf); observer.disconnect();
       window.removeEventListener("resize", resize);
@@ -264,11 +194,9 @@ export default function WaveIntro() {
     };
   }, []);
 
-  return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- This optimized local poster is also the canvas source, avoiding a second image request. */}
-      <img ref={originalRef} className="wave-original" src={IMAGE} alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
-      <canvas ref={canvasRef} className="wave-art" aria-hidden="true" />
-    </>
-  );
+  return <>
+    {/* eslint-disable-next-line @next/next/no-img-element -- The local poster is also the canvas source, sharing one image request. */}
+    <img ref={originalRef} className="wave-original" src={IMAGE} alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
+    <canvas ref={canvasRef} className="wave-art" aria-hidden="true" />
+  </>;
 }
