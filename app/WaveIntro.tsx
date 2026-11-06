@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { drawWaveBreaker } from "./waveBreaker";
 
 const IMAGE = "/images/great-wave.webp";
 const PAPER = "#f5f6f2";
@@ -15,7 +16,7 @@ const ease = (value: number) => { const t = clamp(value); return t * t * (3 - 2 
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
 type Glyph = { column: number; density: number };
-type WaveGlyph = { x: number; y: number; column: number; tone: number };
+type WaveGlyph = { x: number; y: number; column: number; tone: number; strength: number };
 
 /** The finite opening runs independently of the portfolio's idle current. */
 export default function WaveIntro() {
@@ -34,11 +35,12 @@ export default function WaveIntro() {
     let width = 1, height = 1, ratio = 1, columns = 1, rows = 1;
     let cellWidth = 4.5, cellHeight = 8, tileWidth = 1, tileHeight = 1, fontSize = 8;
     let portrait = false, glyphs: Glyph[] = [], glyphLookup: Glyph[] = [];
-    let crashGlyphs: WaveGlyph[] | null = null;
+    let inkCached = false;
     const sampling = document.createElement("canvas");
     const sample = sampling.getContext("2d", { willReadFrequently: true });
     const atlas = document.createElement("canvas"), ink = atlas.getContext("2d", { willReadFrequently: true });
-    if (!sample || !ink) { original.style.visibility = "hidden"; if (intro) intro.dataset.wavePhase = "error"; return; }
+    const inkSource = document.createElement("canvas"), sourceInk = inkSource.getContext("2d");
+    if (!sample || !ink || !sourceInk) { original.style.visibility = "hidden"; if (intro) intro.dataset.wavePhase = "error"; return; }
 
     const phase = (value: string) => {
       if (canvas.dataset.wavePhase !== value) {
@@ -75,8 +77,8 @@ export default function WaveIntro() {
 
     const crop = (amount: number) => {
       const cover = Math.max(width / original.naturalWidth, height / original.naturalHeight);
-      const scale = cover * mix(1, portrait ? 1.15 : 1.65, amount);
-      const sourceX = mix(portrait ? 0.42 : 0.5, portrait ? 0.43 : 0.65, amount);
+      const scale = cover * mix(1, portrait ? 1 : 1.25, amount);
+      const sourceX = mix(portrait ? 0.42 : 0.5, portrait ? 0.46 : 0.65, amount);
       const sourceY = mix(0.5, portrait ? 0.4 : 0.36, amount);
       const screenX = mix(0.5, portrait ? 0.5 : 0.68, amount);
       const screenY = mix(0.5, portrait ? 0.42 : 0.4, amount);
@@ -106,7 +108,7 @@ export default function WaveIntro() {
         const glyph = glyphLookup[Math.round(strength * 255)];
         if (CHARACTERS[glyph.column] === " ") continue;
         const x = column * cellWidth, y = row * cellHeight;
-        characters.push({ x, y, column: glyph.column, tone: Math.min(INKS.length - 1, Math.floor(strength * INKS.length)) });
+        characters.push({ x, y, column: glyph.column, tone: Math.min(INKS.length - 1, Math.floor(strength * INKS.length)), strength });
       }
       return characters;
     };
@@ -117,33 +119,40 @@ export default function WaveIntro() {
     };
 
     const crash = (progress: number) => {
-      if (!crashGlyphs) crashGlyphs = sampleWave(1);
+      if (!inkCached) {
+        const density = sourceInk.createImageData(columns, rows);
+        for (let offset = 3; offset < density.data.length; offset += 4) density.data[offset] = 255;
+        for (const glyph of sampleWave(1)) {
+          const offset = (Math.round(glyph.y / cellHeight) * columns + Math.round(glyph.x / cellWidth)) * 4;
+          density.data[offset] = density.data[offset + 1] = density.data[offset + 2] = Math.round(glyph.strength * 255);
+        }
+        sourceInk.putImageData(density, 0, 0);
+        inkCached = true;
+      }
+      sample.setTransform(columns / width, 0, 0, rows / height, 0, 0);
       const image = crop(1);
-      // Work in the print's coordinates, so the same crest turns over in every crop.
-      const hingeX = image.x + image.width * 0.34;
-      const hingeY = image.y + image.height * 0.66;
-      const curl = ease(progress / 0.5);
-      const breaking = ease((progress - 0.3) / 0.44);
-      const wash = ease((progress - 0.66) / 0.34);
-      const angle = 1.18 * curl, cosine = Math.cos(angle), sine = Math.sin(angle);
-      const shoreline = height * 0.83;
-
-      // One smooth flow carries adjacent characters together. The lower water anchors
-      // the overturning crest, then the whole body flattens into a shoreward wash.
-      for (const glyph of crashGlyphs) {
-        const sourceX = (glyph.x - image.x) / image.width;
-        const sourceY = (glyph.y - image.y) / image.height;
-        const upper = ease((0.69 - sourceY) / 0.45);
-        const crest = Math.exp(-(((sourceX - 0.39) / 0.3) ** 2)) * upper;
-        const dx = glyph.x - hingeX, dy = glyph.y - hingeY;
-        const foldedX = glyph.x + (dx * cosine - dy * sine - dx) * crest;
-        const foldedY = glyph.y + (dx * sine + dy * cosine - dy) * crest;
-        const washX = glyph.x * 1.4 - width * 0.12;
-        const washY = shoreline + (glyph.y - shoreline) * 0.15
-          + height * 0.018 * Math.sin(glyph.x / width * Math.PI * 2);
-        const x = mix(foldedX, washX, breaking) + width * 0.24 * wash;
-        const y = mix(foldedY, washY, breaking) + height * 1.1 * wash * wash;
-        drawGlyph(glyph, x, y);
+      if (portrait) {
+        const pullback = ease(progress / 0.32);
+        const targetWidth = Math.min(image.width, width * 2.3);
+        const targetHeight = targetWidth * original.naturalHeight / original.naturalWidth;
+        image.x = mix(image.x, width * 0.5 - targetWidth * 0.52, pullback);
+        image.y = mix(image.y, height * 0.42 - targetHeight * 0.4, pullback);
+        image.width = mix(image.width, targetWidth, pullback);
+        image.height = mix(image.height, targetHeight, pullback);
+      }
+      drawWaveBreaker(sample, width, height, image, progress);
+      sample.globalAlpha = 1 - ease(progress / 0.18);
+      sample.drawImage(inkSource, 0, 0, width, height);
+      sample.globalAlpha = 1;
+      const pixels = sample.getImageData(0, 0, columns, rows).data;
+      // Water changes shape underneath a stationary type grid. Characters never rotate,
+      // stretch, or separate into particles as the lip breaks and the foam runs out.
+      for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+        const strength = pixels[(row * columns + column) * 4] / 255;
+        if (strength < 0.1) continue;
+        const glyph = glyphLookup[Math.round(strength * 255)];
+        const tone = Math.min(INKS.length - 1, Math.floor(strength * INKS.length));
+        drawGlyph({ x: column * cellWidth, y: row * cellHeight, column: glyph.column, tone, strength });
       }
     };
 
@@ -162,7 +171,7 @@ export default function WaveIntro() {
         crash(clamp((at - CRASH_START) / (DURATION - CRASH_START)));
         original.style.visibility = "hidden";
         const progress = (at - CRASH_START) / (DURATION - CRASH_START);
-        phase(progress < 0.3 ? "curling" : progress < 0.66 ? "breaking" : "receding");
+        phase(progress < 0.32 ? "curling" : progress < 0.56 ? "plunging" : progress < 0.76 ? "breaking" : "receding");
         return;
       }
       const zoom = ease((at - HOLD) / (ZOOM_END - HOLD));
@@ -193,7 +202,8 @@ export default function WaveIntro() {
       fontSize = 8 * scale; cellWidth = 4.5 * scale; cellHeight = 8 * scale;
       columns = Math.ceil(width / cellWidth); rows = Math.ceil(height / cellHeight);
       sampling.width = columns; sampling.height = rows;
-      crashGlyphs = null;
+      inkSource.width = columns; inkSource.height = rows;
+      inkCached = false;
       buildAtlas();
       paint(finished || reduced ? DURATION : elapsed);
     };
