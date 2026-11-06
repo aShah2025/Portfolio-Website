@@ -322,7 +322,11 @@ export default function Home() {
           <h1 id="intro-title">aaditya shah</h1>
           <a className="enter" href="#index">enter <span aria-hidden="true">↗</span></a>
         </div>
-        <a className="art-credit" href="https://www.metmuseum.org/art/collection/search/56353" target="_blank" rel="noreferrer">Hokusai · The Great Wave <span aria-hidden="true">↗</span></a>
+        <div className="art-credit">
+          <a href="https://www.metmuseum.org/art/collection/search/56353" target="_blank" rel="noreferrer">Hokusai <span aria-hidden="true">↗</span></a>
+          <span aria-hidden="true">·</span>
+          <a href="https://www.pexels.com/video/a-close-up-of-a-wave-crashing-on-the-beach-19923959/" target="_blank" rel="noreferrer">wave reference <span aria-hidden="true">↗</span></a>
+        </div>
         <noscript><style>{`.wave-caption { opacity: 1 !important; visibility: visible !important; } .wave-original { opacity: .12; }`}</style></noscript>
       </section>
 
