@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { pianoPlayer, PIECES } from "./pianoPlayer";
-import WaveIntro from "./WaveIntro";
 
-const OceanCanvas = dynamic(() => import("./OceanCanvas"), { ssr: false });
+const AsciiPlane = dynamic(() => import("./AsciiPlane"), { ssr: false });
 
 
 type Project = {
@@ -160,6 +159,29 @@ const INFO: Record<string, Info> = {
 };
 const TOOLS = ["Xcode", "VS Code", "PyCharm", "Claude Code", "Codex"];
 
+const ROLES = ["builds apps", "writes AI agents", "makes games", "argues policy", "plays piano", "wants to fly"];
+
+// Types out each role, holds it, deletes it, and moves to the next, like someone at a terminal.
+function Typer() {
+  const [text, setText] = useState(ROLES[0]);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let i = 0, n = ROLES[0].length, dir = -1, id = 0;
+    const tick = () => {
+      const word = ROLES[i];
+      n += dir;
+      setText(word.slice(0, n));
+      let wait = dir > 0 ? 70 : 35;
+      if (dir > 0 && n >= word.length) { dir = -1; wait = 1800; }
+      else if (dir < 0 && n <= 0) { dir = 1; i = (i + 1) % ROLES.length; wait = 300; }
+      id = window.setTimeout(tick, wait);
+    };
+    id = window.setTimeout(tick, 2200);
+    return () => clearTimeout(id);
+  }, []);
+  return <span className="typer">{text}<i aria-hidden="true" /></span>;
+}
+
 // A text progress bar: [#######---]
 const bar = (done: number, of: number) => `[${"#".repeat(done)}${"-".repeat(of - done)}]`;
 
@@ -192,7 +214,7 @@ type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
   const stunt = useRef(0);
-  const focus = useRef<string | null>(null);
+  const focus = useRef<string | null>(null); // the open row, whose scene the plane canvas shows
 
   const work: Item[] = featured.map((id) => projects.find((p) => p.id === id)!).concat(projects.filter((p) => !featured.includes(p.id))).map((p) => ({
     id: p.id, name: p.name, meta: p.tag,
@@ -219,7 +241,7 @@ export default function Home() {
       body: (
         <>
           <p className="lead">Private pilot licence, eventually.</p>
-          <p>Ground school first, then the first solo, then the checkride. For now it&apos;s simulators and WingLab.</p>
+          <p>That&apos;s the plane up there. Ground school first, then the first solo, then the checkride. For now it&apos;s simulators and WingLab.</p>
           <pre className="track">{`${bar(1, 10)} ground school\n${bar(0, 10)} first solo\n${bar(0, 10)} checkride`}</pre>
         </>
       ),
@@ -259,8 +281,8 @@ export default function Home() {
   const toggle = (id: string) => {
     const opening = openProject !== id;
     setOpenProject(opening ? id : null);
-    focus.current = opening ? id : null;
-    if (opening && id === "flying") stunt.current += 1;
+    focus.current = opening && id !== "flying" ? id : null;
+    if (opening && id === "flying") stunt.current += 1; // the plane does a barrel roll
   };
 
   // a row of chips; clicking one opens its notes underneath
@@ -313,28 +335,19 @@ export default function Home() {
 
   return (
     <main>
-      <link rel="preload" as="image" href="/images/great-wave.webp" fetchPriority="high" />
-      <OceanCanvas stunt={stunt} focus={focus} />
+      <AsciiPlane stunt={stunt} focus={focus} />
 
-      <section className="intro" id="top" data-wave-phase="loading" aria-labelledby="intro-title">
-        <WaveIntro />
-        <div className="wave-caption">
-          <h1 id="intro-title">aaditya shah</h1>
-          <a className="enter" href="#index">enter <span aria-hidden="true">↗</span></a>
-        </div>
-        <div className="art-credit">
-          <a href="https://www.metmuseum.org/art/collection/search/56353" target="_blank" rel="noreferrer">Hokusai <span aria-hidden="true">↗</span></a>
-          <span aria-hidden="true">·</span>
-          <a href="https://www.pexels.com/video/a-close-up-of-a-wave-crashing-on-the-beach-19923959/" target="_blank" rel="noreferrer">wave motion <span aria-hidden="true">↗</span></a>
-        </div>
-        <noscript><style>{`.wave-caption { opacity: 1 !important; visibility: visible !important; } .wave-original { opacity: .12; }`}</style></noscript>
+      <section className="intro" id="top">
+        <h1>aaditya shah</h1>
+        <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
+        <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
       </section>
 
       <div className="index" id="index">
         <header className="who">
           <h2>aaditya</h2>
-          <p className="prompt">student / builder</p>
-          <p className="where"><span aria-hidden="true">≈</span> Leland High, San Jose, CA</p>
+          <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
+          <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
           <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
         </header>
 

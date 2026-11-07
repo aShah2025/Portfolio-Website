@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f5f6f2; --ink: #243b4d; --muted: #536b7a; --faint: #637b8b; --line: rgba(36,59,77,.15);
-  --plane: #315f7c; --accent: #946044;
-  color-scheme: light;
+  --paper: #0c0f14; --ink: #dfe4ec; --muted: #8b95a5; --faint: #3a4352; --line: rgba(223,228,236,.1);
+  --plane: #7aa2f7; --accent: #ff7a5c;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -17,30 +17,18 @@ a, button { color: inherit; font: inherit; background: none; border: 0; padding:
 .sky { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 main { position: relative; z-index: 1; }
 
-/* The print becomes ink, breaks into the tide, and leaves a quiet invitation. */
-.intro { position: relative; isolation: isolate; min-height: 100svh; height: 100svh; overflow: hidden; background: var(--paper); color: var(--ink); }
-.wave-art, .wave-original { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.wave-original { z-index: 0; object-fit: cover; }
-.wave-art { z-index: 1; }
-.wave-caption { position: absolute; z-index: 2; left: 50%; top: 48%; transform: translate(-50%, -50%); opacity: var(--name-reveal, 0); visibility: hidden; text-align: center; white-space: nowrap; }
-.intro[data-wave-phase="revealing"] .wave-caption { visibility: visible; }
-.intro[data-wave-phase="ready"] .wave-caption, .intro[data-wave-phase="error"] .wave-caption { opacity: 1; visibility: visible; }
-.intro h1 { margin: 0; font: 400 16px/1.4 var(--mono); letter-spacing: .025em; }
-.enter { display: inline-flex; align-items: center; gap: 16px; margin-top: 18px; padding: 8px 0; font: 400 11px/1.4 var(--mono); color: var(--muted); }
-.enter span { display: inline-block; transition: transform .2s; }
-.enter:hover { color: var(--plane); }
-.enter:hover span { transform: translate(2px, -2px); }
-.prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .06em; }
-.art-credit { position: absolute; z-index: 3; left: 28px; bottom: 29px; display: flex; gap: 8px; font: 400 9px/1.4 var(--mono); color: #587083; }
-.art-credit:hover { color: #1e405d; }
-@media (max-aspect-ratio: 20/23) {
-  .wave-original { left: -20%; width: 140%; object-fit: contain; }
-}
-@media (max-width: 699px) {
-  .art-credit { left: 16px; bottom: 18px; font-size: 8px; }
-}
+/* intro: the plane fills the screen, the name sits under it */
+.intro { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; text-align: center; }
+.intro > * { padding: 5px 9px; background: var(--paper); border-radius: 2px; }
+.intro h1 { margin: 0; font: 500 15px/1 var(--mono); letter-spacing: .02em; }
+.prompt { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--plane); letter-spacing: .1em; text-transform: uppercase; }
+.typer i, .prompt > i { display: inline-block; width: .6em; height: 1.1em; margin-left: 3px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
+.hint { margin-top: 28px; font: 400 11px/1 var(--mono); color: var(--muted); letter-spacing: .08em; }
+.hint span { display: inline-block; animation: bob 1.6s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes bob { 50% { transform: translateY(3px); } }
 
-/* A narrow reading column leaves space for the moving ink on the right. */
+/* index: one narrow column on the left, the plane flies on the right */
 .index { width: min(100%, 440px); padding: 12vh 16px 64px clamp(16px, 4vw, 48px); }
 .who h2 { margin: 0; font: 500 22px/1 var(--mono); letter-spacing: -.01em; }
 .who .prompt { margin-top: 12px; }
@@ -49,7 +37,7 @@ main { position: relative; z-index: 1; }
 .intro-copy { margin: 18px 0 0; color: var(--muted); }
 
 .index section { margin-top: 40px; }
-.index h3 { margin: 0 0 12px; font: 400 11px/1 var(--mono); color: var(--faint); letter-spacing: .055em; }
+.index h3 { margin: 0 0 10px; font: 400 11px/1 var(--mono); color: var(--faint); letter-spacing: .1em; text-transform: uppercase; }
 .index h3::before { content: "// "; }
 
 .project-list { list-style: none; margin: 0; padding: 0; }
@@ -113,9 +101,7 @@ main { position: relative; z-index: 1; }
 .links span { margin-left: auto; color: var(--faint); }
 
 @media (max-width: 899px) {
-  .index { width: min(100%, 560px); padding: 32vh 24px 48px; background: linear-gradient(to bottom, transparent, var(--paper) 28vh); }
-  .project-list > li > button { min-height: 36px; }
-  .langs li button { padding: 6px 9px; }
+  .index { width: 100%; padding-top: 40vh; background: linear-gradient(to bottom, transparent, var(--paper) 30vh); }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
