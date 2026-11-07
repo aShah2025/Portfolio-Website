@@ -2,231 +2,262 @@
 
 import { useEffect, useRef } from "react";
 import { createWaveRenderer } from "./waveRenderer";
+import {
+  createPaintedWaveMotion,
+  PAINTED_WAVE_DURATION,
+  PAINTED_WAVE_REVEAL,
+  writePaintedWaveMotion,
+  type PaintedWaveMotion,
+  type WavePoint,
+} from "./paintedWaveMotion";
 
 const IMAGE = "/images/great-wave.webp";
-const VIDEO = "/video/wave-motion.mp4";
-const MOTION_START = 780;
-const WASH_END = 2.7;
-const DRAIN_DURATION = 1.4;
+const CONVERSION_START = 60;
+const MOTION_START = 720;
 const CHARACTERS = " .,:;!|/\\iltfrcLJTU+*oazCYXZmwkbdpq0OQ#%&@$";
 const INKS = ["#a8bac4", "#8fa7b5", "#7392a6", "#557d96", "#3d6b88", "#2c5b7b", "#204c6b", "#173f5d"];
-const clamp = (n: number) => Math.max(0, Math.min(1, n));
-const ease = (n: number) => { const t = clamp(n); return t * t * (3 - 2 * t); };
+const clamp = (value: number) => Math.max(0, Math.min(1, value));
+const ease = (value: number) => { const t = clamp(value); return t * t * (3 - 2 * t); };
 
 export default function WaveIntro() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalRef = useRef<HTMLImageElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current, original = originalRef.current, video = videoRef.current;
-    if (!canvas || !original || !video) return;
+    const canvas = canvasRef.current;
+    const original = originalRef.current;
+    if (!canvas || !original) return;
     const intro = canvas.closest<HTMLElement>(".intro");
-    const renderer = createWaveRenderer(canvas);
-    const atlas = document.createElement("canvas"), ink = atlas.getContext("2d", { willReadFrequently: true });
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let reduced = motion.matches, disposed = false, ready = false, finished = false;
-    let raf = 0, startedAt = 0, elapsed = 0, resourcesReady = false;
-    let width = 1, height = 1, ratio = 1, cellWidth = 3, cellHeight = 5, tileSize = 1, fontSize = 5;
-    let portrait = false, playbackStarted = false, drainingAt: number | null = null;
-    let videoDirty = true, videoFrameRequest = 0, decodedFrames = -1, videoUploads = 0, loadTimer = 0;
-    const hasVideoFrames = typeof video.requestVideoFrameCallback === "function";
-    const glyphLookup = new Uint8Array(256);
-    const updateTimes: number[] = [], frameIntervals: number[] = [];
-    let lastPaint = 0;
-    const phase = (value: string) => {
-      if (canvas.dataset.wavePhase === value) return;
-      canvas.dataset.wavePhase = value;
-      if (intro) intro.dataset.wavePhase = value;
-    };
-    const stopVideo = () => {
-      video.pause();
-      if (videoFrameRequest && hasVideoFrames) video.cancelVideoFrameCallback(videoFrameRequest);
-      videoFrameRequest = 0;
-      video.removeAttribute("src"); video.load();
-    };
-    const complete = () => {
-      if (disposed || finished) return;
-      finished = true; cancelAnimationFrame(raf); raf = 0;
-      window.clearTimeout(loadTimer);
-      original.style.visibility = "hidden"; renderer?.clear();
-      intro?.style.setProperty("--name-reveal", "1"); phase("ready");
-      if (updateTimes.length) {
-        const percentile = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length * .95)] || 0;
-        canvas.dataset.wavePerf = JSON.stringify({ renderer: "video-ascii", frames: updateTimes.length,
-          glyphs: renderer?.glyphCount || 0, drawCalls: 1, videoUploads,
-          updateP95: +percentile(updateTimes).toFixed(2), intervalP95: +percentile(frameIntervals).toFixed(2),
-          fps: +(1000 * frameIntervals.length / frameIntervals.reduce((sum, value) => sum + value, 0)).toFixed(1) });
-      }
-      stopVideo(); renderer?.dispose();
-    };
-    const fail = () => {
-      if (disposed || finished) return;
-      complete(); original.style.visibility = "visible"; original.style.opacity = ".12";
-      canvas.style.opacity = "0"; phase("error");
-    };
-    if (!renderer || !ink) { fail(); renderer?.dispose(); return; }
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const renderer = reducedMotion.matches ? null : createWaveRenderer(canvas);
+    const atlas = document.createElement("canvas");
+    const ink = atlas.getContext("2d", { willReadFrequently: true });
+    const sampleCanvas = document.createElement("canvas");
+    const sample = sampleCanvas.getContext("2d", { willReadFrequently: true });
+    let disposed = false;
+    let finished = false;
+    let raf = 0;
+    let loadTimer = 0;
+    let startedAt: number | null = null;
+    let elapsed = 0;
+    let width = 0;
+    let height = 0;
+    let ratio = 0;
+    let motion: PaintedWaveMotion | null = null;
+    let positions = new Float32Array(0);
+    const frameIntervals: number[] = [];
+    let lastPaint: number | null = null;
 
-    const imageFrame = () => {
-      const scale = portrait ? width * 1.4 / original.naturalWidth
-        : Math.max(width / original.naturalWidth, height / original.naturalHeight);
-      const w = original.naturalWidth * scale, h = original.naturalHeight * scale;
-      return { x: (width - w) * .5, y: (height - h) * .5, width: w, height: h };
+    const setPhase = (phase: string) => {
+      if (canvas.dataset.wavePhase === phase) return;
+      canvas.dataset.wavePhase = phase;
+      if (intro) intro.dataset.wavePhase = phase;
     };
-    const videoFrame = (seconds: number) => {
-      const art = imageFrame();
-      const fillHeight = Math.max(height, width * 9 / 16);
-      const h = art.height + (fillHeight - art.height) * ease(seconds / 1.0);
-      const w = h * 16 / 9;
-      return { x: (width - w) * .5, y: (height - h) * .5, width: w, height: h };
+
+    const finish = (fallback = false) => {
+      if (finished || disposed) return;
+      finished = true;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(loadTimer);
+      renderer?.dispose();
+      if (motion && frameIntervals.length) {
+        const total = frameIntervals.reduce((sum, interval) => sum + interval, 0);
+        canvas.dataset.wavePerf = JSON.stringify({
+          renderer: "painted-wave",
+          glyphs: motion.count,
+          fps: +(1000 * frameIntervals.length / total).toFixed(1),
+        });
+      }
+      motion = null;
+      positions = new Float32Array(0);
+      original.style.visibility = fallback ? "visible" : "hidden";
+      original.style.opacity = fallback ? ".12" : "0";
+      intro?.style.setProperty("--name-reveal", "1");
+      setPhase(fallback ? "error" : "ready");
     };
-    const buildAtlas = () => {
-      tileSize = Math.ceil(cellHeight * ratio) + 2;
-      atlas.width = tileSize * CHARACTERS.length; atlas.height = tileSize * INKS.length;
+
+    if (!renderer || !ink || !sample) {
+      finish(true);
+      return;
+    }
+
+    const buildAtlas = (fontSize: number, tileSize: number) => {
+      atlas.width = tileSize * CHARACTERS.length;
+      atlas.height = tileSize * INKS.length;
       ink.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ink.font = `400 ${fontSize}px ${getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "monospace"}`;
-      ink.textAlign = "center"; ink.textBaseline = "middle";
+      const mono = getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "monospace";
+      ink.font = `400 ${fontSize}px ${mono}`;
+      ink.textAlign = "center";
+      ink.textBaseline = "middle";
       INKS.forEach((color, row) => {
         ink.fillStyle = color;
         for (let column = 0; column < CHARACTERS.length; column++) {
           ink.fillText(CHARACTERS[column], (column + .5) * tileSize / ratio, (row + .5) * tileSize / ratio);
         }
       });
-      const glyphs = Array.from(CHARACTERS, (_, column) => {
+      const densities = Array.from(CHARACTERS, (_, column) => {
         const pixels = ink.getImageData(column * tileSize, 0, tileSize, tileSize).data;
         let alpha = 0;
-        for (let i = 3; i < pixels.length; i += 4) alpha += pixels[i] / 255;
-        return { column, density: alpha / (tileSize * tileSize) };
-      }).sort((a, b) => a.density - b.density);
-      const maximum = glyphs[glyphs.length - 1]?.density || 1;
-      for (const glyph of glyphs) glyph.density /= maximum;
-      for (let i = 0; i < 256; i++) {
-        glyphLookup[i] = glyphs.reduce((nearest, glyph) => Math.abs(glyph.density - i / 255) < Math.abs(nearest.density - i / 255) ? glyph : nearest).column;
-      }
+        for (let i = 3; i < pixels.length; i += 4) alpha += pixels[i];
+        return { column, alpha };
+      });
+      const maximum = Math.max(1, ...densities.map(glyph => glyph.alpha));
+      return Uint8Array.from({ length: 256 }, (_, value) => {
+        const target = value * maximum / 255;
+        return densities.reduce((closest, glyph) =>
+          Math.abs(glyph.alpha - target) < Math.abs(closest.alpha - target) ? glyph : closest
+        ).column;
+      });
     };
-    const play = () => {
-      void video.play().catch(() => { if (!document.hidden) fail(); });
-    };
-    const onVideoFrame = () => {
-      videoFrameRequest = 0;
-      if (disposed || finished) return;
-      videoDirty = true;
-      videoFrameRequest = video.requestVideoFrameCallback(onVideoFrame);
-    };
-    const uploadFrame = () => {
-      if (!hasVideoFrames) {
-        const quality = video.getVideoPlaybackQuality?.();
-        const frames = quality && quality.totalVideoFrames > 0 ? quality.totalVideoFrames : Math.floor(video.currentTime * 60);
-        if (frames !== decodedFrames) { videoDirty = true; decodedFrames = frames; }
-      }
-      if (videoDirty && video.readyState >= 2) {
-        renderer.uploadVideo(video); videoDirty = false; videoUploads++;
-      }
-    };
+
     const paint = () => {
-      if (finished || !ready) return;
-      canvas.style.opacity = "1";
-      const ascii = ease((elapsed - 80) / 700);
+      if (finished || !motion) return;
+      const ascii = ease((elapsed - CONVERSION_START) / (MOTION_START - CONVERSION_START));
       original.style.opacity = String(1 - ascii);
       original.style.visibility = ascii >= 1 ? "hidden" : "visible";
-      if (elapsed >= MOTION_START && !playbackStarted) { playbackStarted = true; play(); }
-      uploadFrame();
-      const seconds = Math.min(WASH_END, video.currentTime);
-      if (playbackStarted && drainingAt === null && (video.currentTime >= WASH_END || video.ended)) {
-        uploadFrame(); video.pause(); drainingAt = elapsed;
+      const seconds = Math.max(0, (elapsed - MOTION_START) / 1000);
+      if (seconds >= PAINTED_WAVE_DURATION) {
+        finish();
+        return;
       }
-      const drain = drainingAt === null ? 0 : (elapsed - drainingAt) / 1000;
-      if (drain >= DRAIN_DURATION) { complete(); return; }
-      renderer.draw({ ascii, flow: ease(seconds / .34), drain, videoFrame: videoFrame(seconds) });
-      const name = ease((drain - .72) / (DRAIN_DURATION - .72));
+      writePaintedWaveMotion(motion, seconds, positions);
+      renderer.draw(positions, ascii);
+      const name = ease((seconds - PAINTED_WAVE_REVEAL) / (PAINTED_WAVE_DURATION - PAINTED_WAVE_REVEAL));
       intro?.style.setProperty("--name-reveal", String(name));
-      phase(name > .01 ? "revealing" : drain > 0 ? "falling" : seconds >= 1.8 ? "washing" : seconds >= .8 ? "crashing" : playbackStarted ? "breaking" : ascii > 0 ? "converting" : "painting");
-      if (elapsed > 12000) fail();
+      if (name > .01) setPhase("revealing");
+      else if (seconds >= 2.05) setPhase("falling");
+      else if (seconds >= 1.12) setPhase("washing");
+      else if (seconds >= .56) setPhase("crashing");
+      else if (seconds > 0) setPhase("breaking");
+      else setPhase(ascii > 0 ? "converting" : "painting");
     };
+
     const resize = () => {
+      if (finished || !original.naturalWidth) return;
       const bounds = intro?.getBoundingClientRect();
       const w = Math.max(1, Math.round(bounds?.width || window.innerWidth));
       const h = Math.max(1, Math.round(bounds?.height || window.innerHeight));
       const dpr = Math.min(1.5, window.devicePixelRatio || 1, Math.sqrt(2_000_000 / (w * h)));
-      if (w === width && h === height && dpr === ratio && resourcesReady) return;
-      width = w; height = h; ratio = dpr;
-      portrait = height > width * 1.15;
-      canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-      const scale = Math.max(1, Math.sqrt(width * height / 1_200_000));
-      fontSize = 5 * scale; cellWidth = 3 * scale; cellHeight = 5 * scale;
-      if (finished || reduced) { complete(); return; }
-      if (ready) {
-        buildAtlas();
-        renderer.configure(atlas, glyphLookup, original, video, { width, height, ratio, cellWidth, cellHeight,
-          tileSize, atlasColumns: CHARACTERS.length, atlasRows: INKS.length, imageFrame: imageFrame() });
-        videoDirty = true; resourcesReady = true;
+      if (motion && width === w && height === h && ratio === dpr) return;
+      width = w;
+      height = h;
+      ratio = dpr;
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+
+      const artScale = height > width * 1.15
+        ? width * 1.4 / original.naturalWidth
+        : Math.max(width / original.naturalWidth, height / original.naturalHeight);
+      const artWidth = original.naturalWidth * artScale;
+      const artHeight = original.naturalHeight * artScale;
+      const art = { x: (width - artWidth) / 2, y: (height - artHeight) / 2, width: artWidth, height: artHeight };
+      const cellScale = Math.max(1, Math.sqrt(artWidth * artHeight / 1_200_000));
+      const fontSize = 5 * cellScale;
+      const columns = Math.ceil(artWidth / (3 * cellScale));
+      const rows = Math.ceil(artHeight / fontSize);
+      const tileSize = Math.ceil(fontSize * ratio) + 2;
+      const lookup = buildAtlas(fontSize, tileSize);
+      sampleCanvas.width = columns;
+      sampleCanvas.height = rows;
+      sample.drawImage(original, 0, 0, columns, rows);
+      const pixels = sample.getImageData(0, 0, columns, rows).data;
+      const points: WavePoint[] = [];
+      const glyphs: number[] = [];
+      for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++) {
+          const u = (column + .5) / columns;
+          const v = (row + .5) / rows;
+          const pixel = (row * columns + column) * 4;
+          const red = pixels[pixel];
+          const green = pixels[pixel + 1];
+          const blue = pixels[pixel + 2];
+          const luminance = (.30 * red + .59 * green + .11 * blue) / 255;
+          const blueInk = clamp((blue - red + 12) / 55);
+          // Bring out the pale engraved claws that lead the break.
+          const claw = ease((u - .38) / .09) * (1 - ease((u - .565) / .06))
+            * ease((v - .14) / .11) * (1 - ease((v - .40) / .11));
+          const strength = clamp(Math.pow(clamp((.86 - luminance) / .7) * blueInk, 1.05) * (1 + .42 * claw));
+          const glyph = lookup[Math.round(strength * 255)];
+          if (strength < .09 || !glyph) continue;
+          points.push({ u, v, strength });
+          glyphs.push(glyph, Math.min(INKS.length - 1, Math.floor(strength * INKS.length)));
+        }
       }
+      motion = createPaintedWaveMotion(points, art, width, height);
+      positions = new Float32Array(motion.count * 4);
+      renderer.configure(atlas, Float32Array.from(glyphs), {
+        columns: CHARACTERS.length,
+        rows: INKS.length,
+        tileSize,
+        width,
+        height,
+      });
       paint();
     };
+
     const frame = (now: number) => {
       raf = 0;
-      if (disposed || !ready || finished || document.hidden) return;
-      if (!startedAt) startedAt = now - elapsed;
+      if (disposed || finished || document.hidden || !motion) return;
+      startedAt ??= now - elapsed;
       elapsed = now - startedAt;
-      if (lastPaint) frameIntervals.push(now - lastPaint);
+      if (lastPaint !== null) frameIntervals.push(now - lastPaint);
       lastPaint = now;
-      const before = performance.now(); paint(); updateTimes.push(performance.now() - before);
+      paint();
       if (!finished) raf = requestAnimationFrame(frame);
     };
-    const resume = () => {
+
+    const onVisibility = () => {
       if (document.hidden) {
-        cancelAnimationFrame(raf); raf = 0; startedAt = 0; lastPaint = 0; video.pause();
-      } else if (ready && !finished && !raf) {
-        if (playbackStarted && drainingAt === null) play();
+        cancelAnimationFrame(raf);
+        raf = 0;
+        startedAt = null;
+        lastPaint = null;
+      } else if (!finished && motion && !raf) {
         raf = requestAnimationFrame(frame);
       }
     };
-    const onMotion = () => { reduced = motion.matches; if (reduced) complete(); };
-    resize();
-    const observer = new ResizeObserver(resize); if (intro) observer.observe(intro);
-    const visibility = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting && entry.boundingClientRect.bottom <= 0) complete();
+    const onMotion = () => { if (reducedMotion.matches) finish(true); };
+    const onContextLost = () => finish(true);
+    const sizeObserver = new ResizeObserver(() => { if (motion) resize(); });
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting && entry.boundingClientRect.bottom <= 0) finish();
     });
-    if (intro) visibility.observe(intro);
-    window.addEventListener("resize", resize);
-    document.addEventListener("visibilitychange", resume);
-    motion.addEventListener("change", onMotion);
-    canvas.addEventListener("webglcontextlost", fail);
-    const onVideoError = () => fail();
-    video.addEventListener("error", onVideoError);
-    if (!finished) {
-      const imageReady = original.complete ? (original.naturalWidth ? Promise.resolve() : Promise.reject(new Error("Artwork unavailable")))
-        : new Promise<void>((resolve, reject) => {
-          original.onload = () => resolve(); original.onerror = () => reject(new Error("Artwork unavailable"));
-        });
-      video.muted = true; video.playsInline = true; video.preload = "auto";
-      video.src = VIDEO; video.load();
-      loadTimer = window.setTimeout(fail, 8000);
-      const videoReady = video.readyState >= 2 ? Promise.resolve() : new Promise<void>((resolve, reject) => {
-        video.onloadeddata = () => resolve(); video.onerror = () => reject(new Error("Wave unavailable"));
-      });
-      Promise.all([imageReady, document.fonts.ready, videoReady]).then(() => {
-        if (disposed || finished) return;
-        window.clearTimeout(loadTimer);
-        ready = true; resize();
-        if (hasVideoFrames) videoFrameRequest = video.requestVideoFrameCallback(onVideoFrame);
-        if (!document.hidden) raf = requestAnimationFrame(frame);
-      }).catch(fail);
+    if (intro) {
+      sizeObserver.observe(intro);
+      visibilityObserver.observe(intro);
     }
+    document.addEventListener("visibilitychange", onVisibility);
+    reducedMotion.addEventListener("change", onMotion);
+    canvas.addEventListener("webglcontextlost", onContextLost);
+
+    loadTimer = window.setTimeout(() => finish(true), 8000);
+    const imageReady = original.decode();
+    Promise.all([imageReady, document.fonts.ready]).then(() => {
+      if (disposed || finished) return;
+      window.clearTimeout(loadTimer);
+      resize();
+      if (!document.hidden) raf = requestAnimationFrame(frame);
+    }).catch(() => finish(true));
+
     return () => {
-      disposed = true; cancelAnimationFrame(raf); window.clearTimeout(loadTimer); observer.disconnect(); visibility.disconnect(); stopVideo(); renderer.dispose();
-      original.onload = null; original.onerror = null; video.onloadeddata = null; video.onerror = null;
-      video.removeEventListener("error", onVideoError);
-      window.removeEventListener("resize", resize); document.removeEventListener("visibilitychange", resume); motion.removeEventListener("change", onMotion);
-      canvas.removeEventListener("webglcontextlost", fail);
+      disposed = true;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(loadTimer);
+      sizeObserver.disconnect();
+      visibilityObserver.disconnect();
+      renderer.dispose();
+      document.removeEventListener("visibilitychange", onVisibility);
+      reducedMotion.removeEventListener("change", onMotion);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      original.style.removeProperty("opacity");
+      original.style.removeProperty("visibility");
+      intro?.style.removeProperty("--name-reveal");
     };
   }, []);
 
   return <>
-    {/* eslint-disable-next-line @next/next/no-img-element -- The local poster is also the GPU texture source, sharing one image request. */}
+    {/* eslint-disable-next-line @next/next/no-img-element -- The poster also supplies the ASCII colors. */}
     <img ref={originalRef} className="wave-original" src={IMAGE} alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
-    <video ref={videoRef} muted playsInline aria-hidden="true" tabIndex={-1}
-      style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
     <canvas ref={canvasRef} className="wave-art" aria-hidden="true" />
   </>;
 }
