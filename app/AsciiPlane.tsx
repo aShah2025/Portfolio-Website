@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { SCENES } from "./asciiScenes";
+import { SCREENS, drawScreen } from "./screens";
 import { disposeFlightModel, loadCessna172 } from "./cessna172";
 
 const TAU = Math.PI * 2;
@@ -113,7 +114,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
       camera.position.set(0, 7.2, 29.1); camera.lookAt(0, 0, 0);
 
-      let W = 0, H = 0, cw = 0, ch = 0, cols = 0, rows = 0, dpr = 1, font = "";
+      let W = 0, H = 0, cw = 0, ch = 0, cols = 0, rows = 0, dpr = 1, font = "", mono = "monospace";
       let tileW = 0, tileH = 0, sampleW = 0, sampleH = 0, needsDraw = true;
       let buf: Uint8Array<ArrayBuffer> = new Uint8Array(0);
       const scene2d = document.createElement("canvas"), sc2 = scene2d.getContext("2d", { willReadFrequently: true })!;
@@ -152,7 +153,8 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         // Half the old glyph height gives about four times as many independently shaded cells.
         // Keep a bounded grid on very large displays instead of silently making ordinary screens coarse.
         const size = Math.max(W < 700 ? 3.75 : 4, W / 1900 * 4, Math.sqrt(W * H / 170000) / 0.85);
-        font = `500 ${size}px ${getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "monospace"}`;
+        mono = `${getComputedStyle(document.body).getPropertyValue("--font-geist-mono").trim() || "ui-monospace"}, ui-monospace, Menlo, monospace`;
+        font = `500 ${size}px ${mono}`;
         ctx.font = font; cw = ctx.measureText("M").width; ch = size * 1.22;
         tileW = Math.ceil(cw * dpr); tileH = Math.ceil(ch * dpr);
         cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
@@ -188,7 +190,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       disposers.push(() => mo.disconnect());
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
       let last = performance.now(), drawnAt = -Infinity, time = 0, seen = stunt.current, stuntAt = -1e9;
-      let previousScroll = -1, previousFocus: string | null = null;
+      let previousOpen = "", previousScroll = -1, previousFocus: string | null = null, openedAt = 0;
       const frame = (now: number) => {
         if (disposed) return;
         raf = requestAnimationFrame(frame);
@@ -220,10 +222,13 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         // Roll about the fuselage's longitudinal axis, which is local z.
         plane.rotateZ(roll); prop.rotation.z = reduced ? 0.35 : time * 45;
 
-        const want = focus.current && SCENES[focus.current] ? focus.current : "";
-        if (want) sceneId = want;
+        const want = focus.current && (SCENES[focus.current] || SCREENS[focus.current]) ? focus.current : "";
+        if (want && want !== sceneId) { sceneId = want; openedAt = now; }
+        if (want && previousOpen !== want) openedAt = now;
+        previousOpen = want;
+        const screen = SCREENS[sceneId];
         shown = reduced ? (want ? 1 : 0) : shown + ((want ? 1 : 0) - shown) * Math.min(1, dt * 6);
-        if (shown > 0.001 && sceneId) {
+        if (shown > 0.001 && sceneId && !screen) {
           sc2.setTransform(1, 0, 0, 1, 0, 0); sc2.fillStyle = "#000"; sc2.fillRect(0, 0, cols, rows);
           sc2.setTransform(cols / W, 0, 0, rows / H, 0, 0);
           const bx = wide ? textEdge + 24 : W * 0.08, bw = (wide ? W * 0.95 : W * 0.92) - bx;
@@ -284,7 +289,13 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
           }
           ctx.globalAlpha = 1;
         }
-        if (shown > 0.001) {
+        if (shown > 0.001 && screen) {
+          // Terminals and editors are drawn as real text so their commands and output can be read.
+          ctx.globalAlpha = shown * (wide ? 1 : 0.35);
+          const bx = wide ? textEdge + 32 : 12, bw = (wide ? W * 0.97 : W - 12) - bx;
+          drawScreen(ctx, screen, bx, wide ? H * 0.1 : H * 0.06, bw, wide ? H * 0.84 : H * 0.42, reduced ? Infinity : (now - openedAt) / 1000, mono);
+          ctx.globalAlpha = 1;
+        } else if (shown > 0.001) {
           ctx.globalAlpha = shown * (wide ? 1 : 0.35);
           for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
             const i = (r * cols + c) * 4, R = scenePx[i], G = scenePx[i + 1], B = scenePx[i + 2], lum = Math.max(R, G, B) / 255;
