@@ -209,6 +209,34 @@ function PianoControls() {
   );
 }
 
+const NAV: [string, string][] = [["Work", "#work"], ["Skills", "#skills"], ["Life", "#life"], ["Recognition", "#recognition"], ["Contact", "#contact"]];
+
+// A compact frosted bar that floats over the hero; on narrow screens the links fold into a menu.
+function Nav() {
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("keydown", onKey); };
+  }, []);
+  return (
+    <header className={`nav${scrolled ? " scrolled" : ""}`}>
+      <a className="brand" href="#top">aaditya shah</a>
+      <button type="button" className="menu" aria-expanded={open} aria-controls="nav-links" onClick={() => setOpen((o) => !o)}>
+        {open ? "Close" : "Menu"}
+      </button>
+      <nav id="nav-links" aria-label="Sections" className={open ? "open" : ""}>
+        {NAV.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>)}
+        <a className="btn" href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Resume</a>
+      </nav>
+    </header>
+  );
+}
+
 type Item = { id: string; name: string; meta: string; body: React.ReactNode };
 
 export default function Home() {
@@ -230,7 +258,7 @@ export default function Home() {
             <dl className="spec">{BUILT[p.id].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
           </div>
         )}
-        {p.links && <p className="out">{p.links.map(([label, href]) => <a key={href} href={href} target="_blank" rel="noreferrer">{label} ↗</a>)}</p>}
+        {p.links && <p className="out">{p.links.map(([label, href]) => <a key={href} href={href} target="_blank" rel="noopener noreferrer">{label}</a>)}</p>}
       </>
     ),
   }));
@@ -322,9 +350,9 @@ export default function Home() {
         return (
           <li key={it.id} id={it.id} className={isOpen ? "open" : ""}>
             <button type="button" aria-expanded={isOpen} aria-controls={`${it.id}-body`} onClick={() => toggle(it.id)}>
-              <span className="dash" aria-hidden="true">—</span>
               <span className="name">{it.name}</span>
               <span className="meta">{it.meta}</span>
+              <span className="plus" aria-hidden="true" />
             </button>
             <div className="body" id={`${it.id}-body`} hidden={!isOpen}>{it.body}</div>
           </li>
@@ -334,38 +362,45 @@ export default function Home() {
   );
 
   return (
+    <>
+    <a className="skip" href="#work">Skip to work</a>
+    <Nav />
     <main>
       <AsciiPlane stunt={stunt} focus={focus} />
 
-      <section className="intro" id="top">
-        <h1>aaditya shah</h1>
-        <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
-        <a className="hint" href="#index">scroll <span aria-hidden="true">↓</span></a>
+      <section className="intro" id="top" aria-labelledby="h-name">
+        <div className="intro-copy">
+          <h1 id="h-name">Aaditya Shah</h1>
+          <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
+          <p className="intro-lead">I build apps, games, websites, and whatever I want to learn next. Student at Leland High in San Jose, CA.</p>
+          <div className="actions">
+            <a className="btn" href="#work">See my work</a>
+            <a className="btn btn-quiet" href="https://github.com/aShah2025" target="_blank" rel="noopener noreferrer">GitHub</a>
+          </div>
+        </div>
       </section>
 
       <div className="index" id="index">
-        <header className="who">
-          <h2>aaditya</h2>
-          <p className="prompt"><span aria-hidden="true">&gt;</span> student / builder<i aria-hidden="true" /></p>
-          <p className="where"><span aria-hidden="true">-=≡&gt;</span> Leland High, San Jose, CA</p>
-          <p className="intro-copy">I build apps, games, websites, and whatever I want to learn next. Click anything below to open it.</p>
-        </header>
+        <section id="work" aria-labelledby="h-work">
+          <h2 id="h-work">Work</h2>
+          <p className="section-note">Click any project to open it.</p>
+          {list(work)}
+        </section>
 
-        <section aria-labelledby="h-work"><h3 id="h-work">work</h3>{list(work)}</section>
-
-        <section aria-labelledby="h-lang">
-          <h3 id="h-lang">languages</h3>
+        <section id="skills" aria-labelledby="h-lang">
+          <h2 id="h-lang">Languages</h2>
           {chips(LANGUAGES.map(([n]) => n), Object.fromEntries(LANGUAGES))}
         </section>
 
         <section aria-labelledby="h-tools">
-          <h3 id="h-tools">tools</h3>
+          <h2 id="h-tools">Tools</h2>
           {chips(TOOLS)}
         </section>
-        <section aria-labelledby="h-life"><h3 id="h-life">off the keyboard</h3>{list(life)}</section>
 
-        <section aria-labelledby="h-rec">
-          <h3 id="h-rec">recognition</h3>
+        <section id="life" aria-labelledby="h-life"><h2 id="h-life">Off the keyboard</h2>{list(life)}</section>
+
+        <section id="recognition" aria-labelledby="h-rec">
+          <h2 id="h-rec">Recognition</h2>
           <ul className="awards">
             {awards.map((a) => (
               <li key={a.title}>
@@ -376,20 +411,25 @@ export default function Home() {
           </ul>
           <p className="aside">Congressional App Challenge 2025 recognition for Kura. Competing again in 2026 with Canary.</p>
         </section>
-
-        <section aria-labelledby="h-hi">
-          <h3 id="h-hi">get in touch</h3>
-          <p>Got an idea? Let&apos;s build something. My code is on GitHub and my hackathon projects are on Devpost.</p>
-        </section>
-
-        <footer className="links">
-          <a href="https://github.com/aShah2025" target="_blank" rel="noreferrer">GitHub ↗</a>
-          <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noreferrer">Devpost ↗</a>
-          <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noreferrer">Resume ↗</a>
-          <a href="#top">Top ↑</a>
-          <span>© 2026</span>
-        </footer>
       </div>
     </main>
+
+    <footer className="foot" id="contact">
+      <div className="foot-top">
+        <div>
+          <h2>Got an idea? Let&apos;s build something.</h2>
+          <p>My code is on GitHub and my hackathon projects are on Devpost.</p>
+        </div>
+        <nav aria-label="Elsewhere" className="foot-links">
+          <a href="https://github.com/aShah2025" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://devpost.com/livable-stilted-0a" target="_blank" rel="noopener noreferrer">Devpost</a>
+          <a href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noopener noreferrer">Resume</a>
+          <a href="#top">Back to top</a>
+        </nav>
+      </div>
+      <p className="foot-mark" aria-hidden="true">aaditya shah</p>
+      <p className="foot-credit">© 2026 Aaditya Shah. The Cessna 172 above is rendered live in the browser and redrawn as ASCII.</p>
+    </footer>
+    </>
   );
 }
