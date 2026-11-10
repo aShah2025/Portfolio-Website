@@ -59,6 +59,22 @@ const car = (c: CanvasRenderingContext2D, px: number, py: number, length: number
   c.restore();
 };
 
+// Shared pieces for the language and tool drawings: a window frame and rows of code drawn as bars.
+const frame = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color = COOL) => {
+  box(c, x, y, w, h, color, 5, 8);
+  line(c, [[x, y + h * 0.1], [x + w, y + h * 0.1]], 4, DIM);
+  [0, 1, 2].forEach((i) => dot(c, x + w * 0.04 + i * w * 0.035, y + h * 0.05, Math.max(2.5, h * 0.014), i ? DIM : WARM));
+};
+const codeRows = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rows: [number, number, boolean?][], shown = rows.length) => {
+  const step = h / rows.length;
+  rows.slice(0, shown).forEach(([indent, len, hot], i) => {
+    const yy = y + step * (i + 0.5), x0 = x + indent * w * 0.07;
+    line(c, [[x0, yy], [x0 + w * 0.08, yy]], 7, hot ? WARM : COOL);
+    if (len > 0.1) line(c, [[x0 + w * 0.11, yy], [x0 + w * len, yy]], 7, hot ? WARM : LIGHT);
+  });
+};
+const SNIPPET: [number, number, boolean?][] = [[0, 0.5], [1, 0.62, true], [1, 0.4], [2, 0.55], [2, 0.3], [1, 0.45], [0, 0.2]];
+
 const DRAWINGS: Record<string, Draw> = {
   // Daily macros with measurement ticks, individual bar caps and a segmented calorie dial.
   kura: (c, x, y, w, h, t) => {
@@ -277,6 +293,151 @@ const DRAWINGS: Record<string, Draw> = {
     for (let i = 0; i < 4; i++) {
       const u = loop(t + i * 0.75, 3), nx = x + w * (0.18 + i * 0.21), ny = y + h * (0.25 - u * 0.17), r = Math.min(w, h) * 0.013;
       c.globalAlpha = Math.sin(u * Math.PI) * 0.8; ellipse(c, nx, ny, r * 1.4, r, i % 2 ? WARM : COOL, 3); line(c, [[nx + r * 1.3, ny], [nx + r * 1.3, ny - h * 0.06], [nx + r * 3.5, ny - h * 0.04]], 3, i % 2 ? WARM : COOL); c.globalAlpha = 1;
+    }
+  },
+  // Swift: lines of SwiftUI on the left become stacked views on a phone on the right.
+  "chip-Swift": (c, x, y, w, h, t) => {
+    const k = Math.min(1, loop(t, 6) * 1.5), n = Math.max(1, Math.ceil(k * 5));
+    frame(c, x + w * 0.02, y + h * 0.08, w * 0.5, h * 0.84);
+    codeRows(c, x + w * 0.06, y + h * 0.22, w * 0.42, h * 0.62, SNIPPET, n + 2);
+    arrow(c, [x + w * 0.55, y + h * 0.5], [x + w * 0.64, y + h * 0.5], WARM, 4, 11);
+    const px = x + w * 0.69, pw = Math.min(w * 0.27, h * 0.45), py = y + h * 0.06, ph = h * 0.88;
+    box(c, px, py, pw, ph, COOL, 5, 18); line(c, [[px + pw * 0.38, py + ph * 0.04], [px + pw * 0.62, py + ph * 0.04]], 4, DIM);
+    for (let i = 0; i < n; i++) {
+      const vy = py + ph * (0.11 + i * 0.16), hot = i === n - 1;
+      c.fillStyle = hot ? "rgba(255,122,74,.25)" : SHADE; c.fillRect(px + pw * 0.1, vy, pw * 0.8, ph * 0.12);
+      box(c, px + pw * 0.1, vy, pw * 0.8, ph * 0.12, hot ? WARM : LIGHT, 3, 6);
+    }
+  },
+  // Python: indentation is the structure, so the blocks step in and out while a run prints output.
+  "chip-Python": (c, x, y, w, h, t) => {
+    frame(c, x + w * 0.02, y + h * 0.04, w * 0.96, h * 0.56);
+    const rows: [number, number, boolean?][] = [[0, 0.45], [1, 0.6], [2, 0.5, true], [2, 0.38], [1, 0.3], [0, 0.55]];
+    rows.forEach(([ind], i) => { const yy = y + h * (0.17 + i * 0.07); for (let j = 0; j < ind; j++) line(c, [[x + w * (0.06 + j * 0.06), yy - h * 0.025], [x + w * (0.06 + j * 0.06), yy + h * 0.025]], 2, DIM); });
+    codeRows(c, x + w * 0.06, y + h * 0.14, w * 0.86, h * 0.42, rows.map(([a, b, hot]) => [a * 0.85, b, hot]));
+    box(c, x + w * 0.02, y + h * 0.66, w * 0.96, h * 0.3, DIM, 3, 8);
+    const out = Math.floor(loop(t, 5) * 5);
+    for (let i = 0; i < Math.min(out, 3); i++) line(c, [[x + w * 0.09, y + h * (0.73 + i * 0.075)], [x + w * (0.3 + ((i * 37) % 40) / 100), y + h * (0.73 + i * 0.075)]], 4, i === 2 ? WARM : COOL);
+    line(c, [[x + w * 0.05, y + h * 0.73], [x + w * 0.07, y + h * 0.73]], 4, WARM);
+  },
+  // Java: source compiles to bytecode, and the JVM runs it.
+  "chip-Java": (c, x, y, w, h, t) => {
+    const cy = y + h * 0.5, bw = w * 0.24, bh = h * 0.5;
+    [[0.02, COOL], [0.38, LIGHT], [0.74, WARM]].forEach(([u, col], i) => {
+      const bx = x + w * (u as number);
+      box(c, bx, cy - bh / 2, bw, bh, col as string, 4, 8);
+      if (i === 0) codeRows(c, bx + bw * 0.1, cy - bh * 0.38, bw * 0.8, bh * 0.76, SNIPPET.slice(0, 5));
+      if (i === 1) for (let r = 0; r < 5; r++) for (let q = 0; q < 4; q++) box(c, bx + bw * (0.1 + q * 0.21), cy - bh * 0.38 + r * bh * 0.16, bw * 0.15, bh * 0.1, (r + q + Math.floor(t * 2)) % 5 ? DIM : LIGHT, 2.5, 2);
+      if (i === 2) {
+        const r = Math.min(bw, bh) * 0.28, a0 = t * 1.5;
+        ring(c, bx + bw / 2, cy, r, 5, WARM);
+        for (let k = 0; k < 8; k++) { const a = a0 + k * Math.PI / 4; line(c, [[bx + bw / 2 + Math.cos(a) * r, cy + Math.sin(a) * r], [bx + bw / 2 + Math.cos(a) * r * 1.35, cy + Math.sin(a) * r * 1.35]], 6, WARM); }
+        dot(c, bx + bw / 2, cy, r * 0.3, WARM);
+      }
+    });
+    arrow(c, [x + w * 0.28, cy], [x + w * 0.36, cy], COOL, 4, 11); arrow(c, [x + w * 0.64, cy], [x + w * 0.72, cy], COOL, 4, 11);
+    const u = loop(t, 2.4); dot(c, x + w * (0.28 + u * 0.46), cy - bh * 0.62, 5, WARM);
+  },
+  // JavaScript: the event loop picks a waiting callback and runs it on the call stack.
+  "chip-JavaScript": (c, x, y, w, h, t) => {
+    const cx = x + w * 0.3, cy = y + h * 0.5, r = Math.min(w * 0.22, h * 0.36), a = t * 1.6;
+    ring(c, cx, cy, r, 4, DIM); ring(c, cx, cy, r, 6, WARM, a, a + 1.2);
+    arrow(c, [cx + Math.cos(a + 1.2) * r, cy + Math.sin(a + 1.2) * r], [cx + Math.cos(a + 1.35) * r, cy + Math.sin(a + 1.35) * r], WARM, 5, 12);
+    const stack = 1 + Math.floor(loop(t, 3) * 4);
+    for (let i = 0; i < 4; i++) box(c, x + w * 0.66, y + h * (0.78 - i * 0.16), w * 0.3, h * 0.12, i < stack ? (i === stack - 1 ? WARM : COOL) : DIM, 3, 5);
+    for (let i = 0; i < 3; i++) box(c, x + w * (0.12 + i * 0.13), y + h * 0.04, w * 0.1, h * 0.08, i === Math.floor(t) % 3 ? LIGHT : DIM, 3, 4);
+  },
+  // HTML: the browser parses tags into a tree, the DOM, one node at a time.
+  "chip-HTML": (c, x, y, w, h, t) => {
+    const nodes: [number, number, number][] = [[0.5, 0.1, -1], [0.26, 0.38, 0], [0.74, 0.38, 0], [0.12, 0.7, 1], [0.38, 0.7, 1], [0.62, 0.7, 2], [0.88, 0.7, 2], [0.62, 0.92, 5]];
+    const n = Math.ceil(Math.min(1, loop(t, 6) * 1.4) * nodes.length);
+    nodes.slice(0, n).forEach(([u, v, parent], i) => {
+      const nx = x + w * u, ny = y + h * v;
+      if (parent >= 0) line(c, [[x + w * nodes[parent][0], y + h * nodes[parent][1] + h * 0.05], [nx, ny - h * 0.05]], 3, DIM);
+      const hot = i === n - 1;
+      c.fillStyle = "#000"; c.fillRect(nx - w * 0.07, ny - h * 0.05, w * 0.14, h * 0.1);
+      box(c, nx - w * 0.07, ny - h * 0.05, w * 0.14, h * 0.1, hot ? WARM : COOL, 4, 6);
+      line(c, [[nx - w * 0.035, ny], [nx + w * 0.035, ny]], 3, hot ? WARM : LIGHT);
+    });
+  },
+  // C++: you manage memory yourself, a pointer stepping across a row of cells.
+  "chip-C++": (c, x, y, w, h, t) => {
+    const n = 8, cw = w * 0.92 / n, cy = y + h * 0.45, at = Math.floor(t * 1.2) % n;
+    for (let i = 0; i < n; i++) {
+      const bx = x + w * 0.04 + i * cw, used = i <= at;
+      c.fillStyle = i === at ? "rgba(255,122,74,.25)" : used ? SHADE : "#000"; c.fillRect(bx + 3, cy, cw - 6, h * 0.22);
+      box(c, bx + 3, cy, cw - 6, h * 0.22, i === at ? WARM : used ? COOL : DIM, 3, 3);
+      line(c, [[bx + cw * 0.3, cy + h * 0.29], [bx + cw * 0.7, cy + h * 0.29]], 2.5, DIM);
+    }
+    const px = x + w * 0.04 + at * cw + cw / 2;
+    box(c, px - w * 0.06, y + h * 0.08, w * 0.12, h * 0.12, WARM, 4, 5);
+    arrow(c, [px, y + h * 0.2], [px, cy - h * 0.03], WARM, 4, 12);
+    c.setLineDash([6, 8]); box(c, x + w * 0.02, y + h * 0.72, w * 0.96, h * 0.2, DIM, 3, 6); c.setLineDash([]);
+    line(c, [[x + w * 0.06, y + h * 0.82], [x + w * (0.06 + 0.1 * (1 + Math.sin(t))), y + h * 0.82]], 4, COOL);
+  },
+  // Xcode: a navigator, an editor with a breakpoint, and the simulator beside it.
+  "chip-Xcode": (c, x, y, w, h, t) => {
+    frame(c, x + w * 0.02, y + h * 0.04, w * 0.96, h * 0.92);
+    line(c, [[x + w * 0.2, y + h * 0.14], [x + w * 0.2, y + h * 0.96]], 3, DIM);
+    for (let i = 0; i < 6; i++) line(c, [[x + w * (0.05 + (i % 3 ? 0.03 : 0)), y + h * (0.2 + i * 0.08)], [x + w * 0.16, y + h * (0.2 + i * 0.08)]], 3, i === 2 ? LIGHT : DIM);
+    codeRows(c, x + w * 0.25, y + h * 0.16, w * 0.38, h * 0.7, SNIPPET);
+    const bp = y + h * 0.16 + (h * 0.7 / 7) * 1.5; polygon(c, [[x + w * 0.21, bp - h * 0.03], [x + w * 0.235, bp - h * 0.03], [x + w * 0.245, bp], [x + w * 0.235, bp + h * 0.03], [x + w * 0.21, bp + h * 0.03]], "rgba(255,122,74,.4)", WARM, 3);
+    const px = x + w * 0.73, pw = w * 0.19, py = y + h * 0.16, ph = h * 0.74;
+    box(c, px, py, pw, ph, COOL, 4, 14);
+    const k = loop(t, 4); line(c, [[px + pw * 0.15, py + ph * 0.5], [px + pw * (0.15 + 0.7 * k), py + ph * 0.5]], 5, WARM);
+  },
+  // VS Code: split editors, with autocomplete popping up under the cursor.
+  "chip-VS Code": (c, x, y, w, h, t) => {
+    frame(c, x + w * 0.02, y + h * 0.04, w * 0.96, h * 0.92);
+    for (let i = 0; i < 4; i++) box(c, x + w * 0.045, y + h * (0.2 + i * 0.13), w * 0.05, h * 0.08, i === 0 ? LIGHT : DIM, 3, 3);
+    line(c, [[x + w * 0.12, y + h * 0.14], [x + w * 0.12, y + h * 0.96]], 3, DIM); line(c, [[x + w * 0.55, y + h * 0.14], [x + w * 0.55, y + h * 0.96]], 3, DIM);
+    codeRows(c, x + w * 0.15, y + h * 0.18, w * 0.36, h * 0.68, SNIPPET);
+    codeRows(c, x + w * 0.58, y + h * 0.18, w * 0.36, h * 0.4, SNIPPET.slice(0, 4).map(([a, b]) => [a, b * 0.8]));
+    if (loop(t, 3) > 0.35) {
+      const ax = x + w * 0.62, ay = y + h * 0.6;
+      c.fillStyle = "#000"; c.fillRect(ax, ay, w * 0.3, h * 0.27); box(c, ax, ay, w * 0.3, h * 0.27, LIGHT, 3, 5);
+      const sel = Math.floor(t * 2) % 3;
+      for (let i = 0; i < 3; i++) line(c, [[ax + w * 0.03, ay + h * (0.06 + i * 0.075)], [ax + w * (0.2 - i * 0.03), ay + h * (0.06 + i * 0.075)]], 4, i === sel ? WARM : COOL);
+    }
+  },
+  // PyCharm: the debugger steps down the code while the variables panel updates.
+  "chip-PyCharm": (c, x, y, w, h, t) => {
+    frame(c, x + w * 0.02, y + h * 0.04, w * 0.96, h * 0.92);
+    const rows = SNIPPET.length, top = y + h * 0.16, span = h * 0.5, at = Math.floor(t * 1.1) % rows;
+    codeRows(c, x + w * 0.1, top, w * 0.85, span, SNIPPET.map(([a, b], i) => [a, b, i === at]));
+    const ay = top + (span / rows) * (at + 0.5); arrow(c, [x + w * 0.04, ay], [x + w * 0.085, ay], WARM, 5, 10);
+    line(c, [[x + w * 0.02, y + h * 0.7], [x + w * 0.98, y + h * 0.7]], 3, DIM);
+    for (let i = 0; i < 3; i++) {
+      const vy = y + h * (0.77 + i * 0.065), v = 0.15 + 0.3 * Math.abs(Math.sin(at * 1.3 + i));
+      line(c, [[x + w * 0.06, vy], [x + w * 0.2, vy]], 4, COOL); line(c, [[x + w * 0.26, vy], [x + w * (0.26 + v), vy]], 4, i === at % 3 ? WARM : LIGHT);
+    }
+  },
+  // Claude Code: a prompt in the terminal, then a plan whose steps get checked off as files change.
+  "chip-Claude Code": (c, x, y, w, h, t) => {
+    frame(c, x + w * 0.02, y + h * 0.04, w * 0.96, h * 0.92, LIGHT);
+    line(c, [[x + w * 0.06, y + h * 0.2], [x + w * 0.09, y + h * 0.23], [x + w * 0.06, y + h * 0.26]], 4, WARM);
+    line(c, [[x + w * 0.12, y + h * 0.23], [x + w * 0.62, y + h * 0.23]], 4, LIGHT);
+    const done = Math.floor(loop(t, 7) * 6);
+    for (let i = 0; i < 5; i++) {
+      const yy = y + h * (0.38 + i * 0.11), bx = x + w * 0.08, s = h * 0.06, ok = i < done, now = i === done;
+      box(c, bx, yy - s / 2, s, s, ok ? COOL : now ? WARM : DIM, 3, 3);
+      if (ok) line(c, [[bx + s * 0.2, yy], [bx + s * 0.45, yy + s * 0.25], [bx + s * 0.85, yy - s * 0.3]], 3.5, COOL);
+      line(c, [[bx + s * 1.6, yy], [bx + s * 1.6 + w * (0.3 + ((i * 23) % 30) / 100), yy]], 4, ok ? DIM : now ? WARM : COOL);
+    }
+  },
+  // Codex: several tasks run in parallel sandboxes, each ending in a diff to accept.
+  "chip-Codex": (c, x, y, w, h, t) => {
+    for (let i = 0; i < 3; i++) {
+      const lx = x + w * (0.02 + i * 0.33), lw = w * 0.29, k = Math.min(1, loop(t + i * 1.3, 5) * 1.3);
+      box(c, lx, y + h * 0.06, lw, h * 0.88, k >= 1 ? WARM : COOL, 4, 8);
+      line(c, [[lx + lw * 0.1, y + h * 0.16], [lx + lw * (0.1 + 0.8 * k), y + h * 0.16]], 5, k >= 1 ? WARM : LIGHT);
+      for (let r = 0; r < 6; r++) {
+        if (r / 6 > k) break;
+        const yy = y + h * (0.3 + r * 0.1), add = (r + i) % 3 !== 0, mx = lx + lw * 0.12;
+        line(c, [[mx - lw * 0.04, yy], [mx + lw * 0.04, yy]], 3.5, add ? COOL : WARM);
+        if (add) line(c, [[mx, yy - lw * 0.04], [mx, yy + lw * 0.04]], 3.5, COOL);
+        line(c, [[lx + lw * 0.25, yy], [lx + lw * (0.5 + ((r * 17 + i * 11) % 35) / 100), yy]], 3.5, add ? LIGHT : DIM);
+      }
     }
   },
 };
