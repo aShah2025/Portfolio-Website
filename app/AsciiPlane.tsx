@@ -29,7 +29,7 @@ function paintSky(W: number, H: number) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const c = cv.getContext("2d")!, rnd = seeded(7), u = Math.max(W, H) / 1400;
   const g = c.createLinearGradient(0, 0, 0, H);
-  [[0, "#2c4a78"], [0.35, "#6f95c4"], [0.62, "#e7c39f"], [0.8, "#ef9f6e"], [1, "#a85a55"]].forEach(([o, col]) => g.addColorStop(o as number, col as string));
+  [[0, "#86a6d6"], [0.38, "#b4cae6"], [0.64, "#f1dfc6"], [0.82, "#f2c6a2"], [1, "#e9b493"]].forEach(([o, col]) => g.addColorStop(o as number, col as string));
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   const sun = c.createRadialGradient(W * 0.2, H * 0.74, 0, W * 0.2, H * 0.74, W * 0.55);
   sun.addColorStop(0, "rgba(255,226,170,.85)"); sun.addColorStop(0.15, "rgba(255,200,140,.45)"); sun.addColorStop(1, "rgba(255,180,120,0)");
@@ -40,7 +40,7 @@ function paintSky(W: number, H: number) {
   };
   for (let i = 0; i < 260; i++) {
     const band = rnd() < 0.5 ? 0.3 : 0.62, x = rnd() * W, y = H * (band + (rnd() - 0.5) * 0.22), r = (40 + rnd() * 130) * u;
-    blob(x, y + r * 0.25, r, "120,70,100", 0.12 + rnd() * 0.1);
+    blob(x, y + r * 0.25, r, "150,120,140", 0.06 + rnd() * 0.06);
     blob(x, y, r * 0.85, y > H * 0.5 ? "255,214,180" : "240,236,240", 0.18 + rnd() * 0.22);
   }
   c.lineCap = "round";
@@ -50,6 +50,16 @@ function paintSky(W: number, H: number) {
     c.lineWidth = (1 + rnd() * 3) * u;
     c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); c.stroke();
   }
+  // Matte the painting into the paper: the bottom is fully transparent before the edge, and the sides
+  // dissolve so no rectangular boundary is left behind.
+  c.globalCompositeOperation = "destination-in";
+  const down = c.createLinearGradient(0, 0, 0, H);
+  [[0, 1], [0.5, 1], [0.64, 0.86], [0.76, 0.55], [0.87, 0.18], [0.95, 0]].forEach(([o, a]) => down.addColorStop(o, `rgba(0,0,0,${a})`));
+  c.fillStyle = down; c.fillRect(0, 0, W, H);
+  const side = c.createLinearGradient(0, 0, W, 0);
+  [[0, 0], [0.06, 1], [0.94, 1], [1, 0]].forEach(([o, a]) => side.addColorStop(o, `rgba(0,0,0,${a})`));
+  c.fillStyle = side; c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
   return cv;
 }
 
@@ -116,7 +126,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const rnd = seeded(21);
       const streaks = Array.from({ length: 14 }, () => ({ x: rnd(), y: rnd(), len: 16 + rnd() * 35, v: 0.025 + rnd() * 0.035 }));
       // Body paint has several tones, so windows, shadows, white skin, and red livery stay distinct.
-      let palette = ["#92abd2", "#e7eef8", "#ff876c", "#5d80b1", "#354154", "#7aa2f7", "#ff7a5c"];
+      let palette = ["#5f7aa6", "#93a6c2", "#c4532f", "#24364f", "#c9cbc0", "#4a6fa5", "#c4532f"];
       const glyphIndex = new Map([...GLYPHS].map((g, i) => [g, i]));
       const buildAtlas = () => {
         atlas.width = tileW * GLYPHS.length; atlas.height = tileH * palette.length;
@@ -200,7 +210,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         const halfH = Math.tan(camera.fov * Math.PI / 360) * 30, halfW = halfH * camera.aspect, wide = W >= 900;
         const span = Math.min(halfW * 2 * (wide ? 0.7 : 0.96), halfH * 2 * 1.25);
         // Reserve the actual text column rather than a fixed 480px cutout on every desktop size.
-        const textEdge = wide ? Math.min(440, W * 0.39) + 28 : 0;
+        const textEdge = wide ? Math.min(560, W * 0.42) + 28 : 0;
         const endSpan = wide ? Math.min((W - textEdge) / W * halfW * 1.75, halfH * 1.45) : span * 0.8;
         rig.scale.setScalar((span + (endSpan - span) * k) / 11);
         rig.position.set(wide ? halfW * (textEdge / W) * k : 0, halfH * (0.18 + (wide ? -0.1 : 0.25) * k) + Math.sin(time * 0.9) * halfH * 0.015, 0);
@@ -229,7 +239,7 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         }
         if (art > 0 && d > 0) {
           paintAsciiSky(d, textEdge * k);
-          ctx.globalAlpha = art * d * 0.48; ctx.drawImage(artCanvas, 0, 0, W, H); ctx.globalAlpha = 1;
+          ctx.globalAlpha = art * d * 0.3; ctx.drawImage(artCanvas, 0, 0, W, H); ctx.globalAlpha = 1;
         }
         // Skip GPU readback altogether in the full-colour introduction or while another scene covers it.
         const fade = (wide ? 1 : 1 - k * 0.92) * (1 - shown) * d;
