@@ -410,6 +410,11 @@ export default function Home() {
           <h1 id="h-name">Aaditya Shah</h1>
           <p className="prompt"><span aria-hidden="true">&gt;</span> <Typer /></p>
           <p className="intro-lead">I build apps, games, websites, and whatever I want to learn next. Student at Leland High in San Jose, CA.</p>
+          <ul className="proof" aria-label="Highlights">
+            <li><a href="#kura">Congressional App Challenge recognition</a></li>
+            <li><a href="https://github.com/aShah2025" target="_blank" rel="noopener noreferrer">Top 10% on GitHub</a></li>
+            <li><a href="#work">{projects.length} projects</a></li>
+          </ul>
           <div className="actions">
             <a className="btn" href="#work">See my work</a>
             <a className="btn btn-quiet" href="https://github.com/aShah2025" target="_blank" rel="noopener noreferrer">GitHub</a>

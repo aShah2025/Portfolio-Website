@@ -51,6 +51,10 @@ main { position: relative; z-index: 1; }
 .prompt { margin: 18px 0 0; font: 500 15px/1.4 var(--mono); color: var(--plane); }
 .typer i { display: inline-block; width: .55em; height: 1.05em; margin-left: 2px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
 .intro-lead { max-width: 480px; margin: 14px 0 0; font-size: 20px; line-height: 1.5; color: var(--muted); }
+.proof { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 0; margin: 18px 0 0; padding: 0; font-size: 14.5px; color: var(--meta); }
+.proof li + li::before { content: "·"; margin: 0 10px; color: var(--line); }
+.proof a { text-decoration: underline; text-decoration-color: #69717755; text-underline-offset: 4px; text-decoration-thickness: 1px; transition: color .18s, text-decoration-color .18s; }
+.proof a:hover { color: var(--ink); text-decoration-color: currentColor; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 @keyframes blink { 50% { opacity: 0; } }
 
@@ -156,6 +160,8 @@ main { position: relative; z-index: 1; }
   .intro-copy::before { inset: -32px -20px -24px -20px; }
   .intro h1 { font-size: clamp(48px, 14vw, 64px); }
   .intro-lead { font-size: 18px; }
+  .proof { gap: 4px 16px; }
+  .proof li + li::before { content: none; }
   .index { padding-left: 20px; padding-right: 20px; }
   .index section + section { margin-top: 64px; }
   .project-list .meta { font-size: 13px; }
