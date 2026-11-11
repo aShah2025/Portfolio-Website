@@ -112,17 +112,17 @@ const projects: Project[] = [
   },
 ];
 
-const awards = [
-  { year: "NOW", title: "Top 10% on GitHub", note: "github.com/aShah2025", kind: "RANKING", href: "https://github.com/aShah2025", code: true },
-  { year: "2026", title: "Congressional App Challenge", note: "Competing again with Canary", kind: "IN PROGRESS", href: "#canary" , code: true },
-  { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" , code: true },
-  { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" , code: true },
-  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" , code: true },
-  { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB", href: "#recognition" , code: true },
-  { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB", href: "#awards" },
-  { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE", href: "#awards" },
-  { year: "7TH GRADE", title: "Geography Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
-  { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE", href: "#awards" },
+const awards: { year: string; title: string; note: string; kind: string; href?: string }[] = [
+  { year: "NOW", title: "Top 10% on GitHub", note: "github.com/aShah2025", kind: "RANKING", href: "https://github.com/aShah2025" },
+  { year: "2026", title: "Congressional App Challenge", note: "Competing again with Canary", kind: "IN PROGRESS", href: "#canary" },
+  { year: "2026", title: "ImpactHack 2026", note: "Participant. Built Wayfinder", kind: "HACKATHON", href: "#wayfinder" },
+  { year: "2025", title: "Congressional Recognition", note: "Congressional App Challenge (CAC) 2025, with Kura", kind: "AWARD", href: "#kura" },
+  { year: "GLOBAL", title: "Qloo Global Hackathon", note: "Participant. Built CultureRisk, an agent on Qloo's taste graph", kind: "HACKATHON", href: "#culturerisk" },
+  { year: "NOW", title: "Leland Hackathon Club", note: "Exploring more", kind: "CLUB" },
+  { year: "NOW", title: "Leland Motorsport Club", note: "Exploring more", kind: "CLUB" },
+  { year: "7TH GRADE", title: "Spelling Bee Champion", note: "Won at Bret Harte Middle School, then placed 15th out of 140 at regionals", kind: "1ST PLACE" },
+  { year: "7TH GRADE", title: "Geography Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE" },
+  { year: "6TH GRADE", title: "Spelling Bee, 3rd Place", note: "Bret Harte Middle School", kind: "3RD PLACE" },
 ];
 
 // What each project is made of, read from its repo on github.com/aShah2025. Projects whose code isn't public
@@ -405,7 +405,13 @@ export default function Home() {
             {awards.map((a) => (
               <li key={a.title}>
                 <span className="yr">{a.year.toLowerCase()}</span>
-                <span><b>{a.title}</b> <span className="note">{a.note}</span></span>
+                <span>
+                  {a.href
+                    ? <a className="award-link" href={a.href} {...(a.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}><b>{a.title}</b><span aria-hidden="true">{a.href.startsWith("http") ? " ↗" : " →"}</span></a>
+                    : <b>{a.title}</b>}
+                  <span className="note">{a.note}</span>
+                </span>
+                <span className="kind">{a.kind.toLowerCase()}</span>
               </li>
             ))}
           </ul>
