@@ -215,6 +215,16 @@ const NAV: [string, string][] = [["Work", "#work"], ["Skills", "#skills"], ["Lif
 function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [active, setActive] = useState("");
+  useEffect(() => {
+    // Mark the section that crosses the upper third of the screen as the current one.
+    const targets = NAV.map(([, href]) => document.querySelector(href)).filter((el): el is Element => !!el);
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) setActive(`#${e.target.id}`);
+    }, { rootMargin: "-30% 0px -65% 0px" });
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
@@ -230,7 +240,7 @@ function Nav() {
         {open ? "Close" : "Menu"}
       </button>
       <nav id="nav-links" aria-label="Sections" className={open ? "open" : ""}>
-        {NAV.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>)}
+        {NAV.map(([label, href]) => <a key={href} href={href} aria-current={active === href ? "location" : undefined} onClick={() => setOpen(false)}>{label}</a>)}
         <a className="btn" href="/Aaditya-Shah-Resume.pdf" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Resume</a>
       </nav>
     </header>

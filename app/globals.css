@@ -38,6 +38,7 @@ main { position: relative; z-index: 1; }
 .brand { font: 400 27px/1 var(--serif); letter-spacing: -.02em; white-space: nowrap; }
 .nav nav { display: flex; align-items: center; gap: 22px; }
 .nav nav a:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 500; }
+.nav nav a[aria-current] { color: var(--plane); text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
 .nav nav a:not(.btn):hover { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
 .nav .btn { min-height: 40px; padding: 8px 16px; font-size: 15px; }
 .menu { display: none; min-height: 44px; min-width: 68px; font-size: 15px; font-weight: 600; }
