@@ -316,6 +316,32 @@ export default function Home() {
     },
   ];
 
+  // A link to a project or life row (#kura, from the recognition list or a shared URL) opens it.
+  useEffect(() => {
+    const ids = new Set([...projects.map((p) => p.id), "flying", "debate", "kungfu", "piano"]);
+    const open = (id: string, smooth: boolean) => {
+      setOpenProject(id);
+      focus.current = id === "flying" ? null : id;
+      // scroll once the row has expanded, so the browser isn't aiming at the old layout
+      window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "instant" }), 30);
+    };
+    const idOf = (hash: string) => { const id = decodeURIComponent(hash.slice(1)); return ids.has(id) ? id : null; };
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element).closest?.("a[href^='#']");
+      const id = a && idOf(a.getAttribute("href")!);
+      if (!id) return;
+      e.preventDefault();
+      history.pushState(null, "", `#${id}`);
+      open(id, true);
+    };
+    const onPop = () => { const id = idOf(location.hash); if (id) open(id, false); };
+    onPop();
+    document.addEventListener("click", onClick);
+    window.addEventListener("popstate", onPop);
+    return () => { document.removeEventListener("click", onClick); window.removeEventListener("popstate", onPop); };
+  }, []);
+
   const toggle = (id: string) => {
     const opening = openProject !== id;
     setOpenProject(opening ? id : null);
