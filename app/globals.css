@@ -123,6 +123,7 @@ main { position: relative; z-index: 1; }
 .award-link { transition: color .18s var(--ease); }
 .award-link span { color: var(--accent); }
 .award-link:hover { color: var(--plane); }
+.project-list .body .stat { margin: 4px 0 8px; font: 500 12px/1.4 var(--mono); letter-spacing: .04em; color: var(--accent); }
 .aside { margin: 18px 0 0; color: var(--muted); }
 
 /* footer: the one deep interlude, with a large editorial wordmark */

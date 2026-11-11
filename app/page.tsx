@@ -258,6 +258,7 @@ export default function Home() {
     id: p.id, name: p.name, meta: p.tag,
     body: (
       <>
+        <p className="stat">{p.stat.toLowerCase()}</p>
         <p className="lead">{p.short}</p>
         <p>{p.description}</p>
         <ul>{p.features.map((f) => <li key={f}>{f}</li>)}</ul>
