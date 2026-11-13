@@ -25,7 +25,7 @@ test("server-renders Aaditya's portfolio and SEO metadata", async () => {
   assert.match(html, /Wayfinder/);
   assert.match(html, /WingLab/);
   assert.match(html, /application\/ld\+json/);
-  assert.match(html, /rel="canonical" href="https:\/\/aaditya-builds\.vercel\.app"/);
+  assert.match(html, /rel="canonical" href="https:\/\/aadityashah\.vercel\.app"/);
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/);
 });
 
