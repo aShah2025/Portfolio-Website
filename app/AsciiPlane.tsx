@@ -69,6 +69,12 @@ function paintSky(W: number, H: number) {
 const GLYPHS = [...new Set(`${RAMP}${SCRAMBLE}${SKY}-|/\\_()`)].join("");
 const SAMPLE = 2;
 const FRAME_MS = 1000 / 30;
+// A pre-rendered still of the plane in its opening pose, for browsers without WebGL. The numbers are
+// its size and centre in world units, measured at the origin's distance from the camera.
+const STILL = { src: "/models/cessna-172.webp", width: 7.985, height: 3.333, cx: 0.08, cy: 0.091 };
+const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+  const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error(`Unable to load ${src}`)); image.src = src;
+});
 
 export default function AsciiPlane({ stunt, focus }: { stunt: { current: number }; focus: { current: string | null } }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -87,25 +93,38 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         import("three"), import("three/examples/jsm/environments/RoomEnvironment.js"), document.fonts.ready,
       ]);
       if (disposed) return;
-      const { plane, prop } = await loadCessna172(THREE, abort.signal);
-      if (disposed) { disposeFlightModel(THREE, plane); return; }
-      disposers.push(() => disposeFlightModel(THREE, plane));
+      const scene = new THREE.Scene();
+      // Many laptops have no WebGL (hardware acceleration off, a blocklisted GPU, or an old driver), so
+      // the 3D flight is optional: without it the page draws a still of the same plane instead.
+      let gl: InstanceType<typeof THREE.WebGLRenderer> | null = null, still: HTMLImageElement | null = null;
+      let plane = new THREE.Group() as InstanceType<typeof THREE.Object3D>, prop = new THREE.Object3D();
+      try {
+        gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
+        const renderer = gl;
+        disposers.push(() => renderer.dispose());
+        ({ plane, prop } = await loadCessna172(THREE, abort.signal));
+        const model = plane;
+        disposers.push(() => disposeFlightModel(THREE, model));
+        if (disposed) return;
+        const pmrem = new THREE.PMREMGenerator(gl), room = new RoomEnvironment();
+        let environment: ReturnType<typeof pmrem.fromScene>;
+        try { environment = pmrem.fromScene(room, 0.04); }
+        finally { room.dispose(); pmrem.dispose(); }
+        disposers.push(() => environment.dispose());
+        scene.environment = environment.texture;
+      } catch (error) {
+        if (disposed) return;
+        console.warn("3D flight unavailable; showing a still of the plane instead", error);
+        cleanup(); gl = null; plane = new THREE.Group();
+        still = await loadImage(STILL.src);
+        if (disposed) return;
+      }
       const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
       let reduced = motion.matches;
-      const gl = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: document.createElement("canvas") });
-      disposers.push(() => gl.dispose());
-      gl.toneMapping = THREE.ACESFilmicToneMapping;
-      gl.toneMappingExposure = 0.95;
+      if (gl) { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.95; }
       const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4 });
       disposers.push(() => rt.dispose());
       rt.texture.colorSpace = THREE.SRGBColorSpace;
-      const scene = new THREE.Scene();
-      const pmrem = new THREE.PMREMGenerator(gl), room = new RoomEnvironment();
-      let environment: ReturnType<typeof pmrem.fromScene>;
-      try { environment = pmrem.fromScene(room, 0.04); }
-      finally { room.dispose(); pmrem.dispose(); }
-      disposers.push(() => environment.dispose());
-      scene.environment = environment.texture;
       scene.environmentIntensity = 0.5;
       scene.add(new THREE.HemisphereLight("#e8f0ff", "#8e6c58", 1.0));
       const sun = new THREE.DirectionalLight("#ffe2c0", 2.6); sun.position.set(-6, 7, 5); scene.add(sun);
@@ -113,10 +132,12 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
       const rig = new THREE.Group(); rig.add(plane); scene.add(rig);
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
       camera.position.set(0, 7.2, 29.1); camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld(); // Projecting the still needs this before any render has run.
 
       let W = 0, H = 0, cw = 0, ch = 0, cols = 0, rows = 0, dpr = 1, font = "", mono = "monospace";
       let tileW = 0, tileH = 0, sampleW = 0, sampleH = 0, needsDraw = true;
-      let buf: Uint8Array<ArrayBuffer> = new Uint8Array(0);
+      let buf: Uint8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBufferLike> = new Uint8Array(0);
+      const stillSample = document.createElement("canvas"), ssc = stillSample.getContext("2d", { willReadFrequently: true })!;
       const scene2d = document.createElement("canvas"), sc2 = scene2d.getContext("2d", { willReadFrequently: true })!;
       const artCanvas = document.createElement("canvas"), artCtx = artCanvas.getContext("2d")!;
       const atlas = document.createElement("canvas"), ac = atlas.getContext("2d")!;
@@ -160,7 +181,8 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         cols = Math.ceil(W / cw); rows = Math.ceil(H / ch);
         sampleW = cols * SAMPLE; sampleH = rows * SAMPLE;
         rt.setSize(sampleW, sampleH); buf = new Uint8Array(sampleW * sampleH * 4);
-        gl.setPixelRatio(dpr); gl.setSize(W, H, false);
+        stillSample.width = sampleW; stillSample.height = sampleH;
+        gl?.setPixelRatio(dpr); gl?.setSize(W, H, false);
         scene2d.width = cols; scene2d.height = rows;
         artCanvas.width = canvas.width; artCanvas.height = canvas.height;
         camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -218,7 +240,8 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         rig.position.set(wide ? halfW * (textEdge / W) * k : 0, halfH * (0.18 + (wide ? -0.1 : 0.25) * k) + Math.sin(time * 0.9) * halfH * 0.015, 0);
         if (stunt.current !== seen) { seen = stunt.current; stuntAt = now; }
         const s = (now - stuntAt) / 1800, roll = !reduced && s > 0 && s < 1 ? TAU * (s * s * (3 - 2 * s)) : 0;
-        plane.rotation.set(0.04 + (reduced ? 0 : pointer.y * 0.2 + Math.sin(time * 0.7) * 0.025), Math.PI / 2 + 0.68 + Math.sin(p * TAU) * 0.38 + (reduced ? 0 : pointer.x * 0.38), reduced ? 0 : Math.sin(time * 0.5) * 0.055 - pointer.x * 0.12, "YXZ");
+        const bank = reduced ? 0 : Math.sin(time * 0.5) * 0.055 - pointer.x * 0.12;
+        plane.rotation.set(0.04 + (reduced ? 0 : pointer.y * 0.2 + Math.sin(time * 0.7) * 0.025), Math.PI / 2 + 0.68 + Math.sin(p * TAU) * 0.38 + (reduced ? 0 : pointer.x * 0.38), bank, "YXZ");
         // Roll about the fuselage's longitudinal axis, which is local z.
         plane.rotateZ(roll); prop.rotation.z = reduced ? 0.35 : time * 45;
 
@@ -237,10 +260,20 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
           scenePx = sc2.getImageData(0, 0, cols, rows).data;
         }
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-        gl.setClearColor(0x000000, 0);
+        gl?.setClearColor(0x000000, 0);
+        // Without WebGL, place the still where the model's centre projects, at the rig's current scale.
+        const drawStill = (target: CanvasRenderingContext2D) => {
+          if (!still) return;
+          const s = rig.scale.x, at = rig.position.clone().add(new THREE.Vector3(STILL.cx * s, STILL.cy * s, 0)).project(camera);
+          const unit = H / 2 / halfH * s, w = STILL.width * unit, h = STILL.height * unit;
+          target.save(); target.translate((at.x + 1) / 2 * W, (1 - at.y) / 2 * H); target.rotate(-bank);
+          target.drawImage(still, -w / 2, -h / 2, w, h); target.restore();
+        };
         if (d < 1) {
-          gl.setRenderTarget(null); gl.clear(); gl.render(scene, camera);
-          ctx.globalAlpha = 1 - d; ctx.drawImage(sky, 0, 0, W, H); ctx.drawImage(gl.domElement, 0, 0, W, H); ctx.globalAlpha = 1;
+          ctx.globalAlpha = 1 - d; ctx.drawImage(sky, 0, 0, W, H);
+          if (gl) { gl.setRenderTarget(null); gl.clear(); gl.render(scene, camera); ctx.drawImage(gl.domElement, 0, 0, W, H); }
+          else drawStill(ctx);
+          ctx.globalAlpha = 1;
         }
         if (art > 0 && d > 0) {
           paintAsciiSky(d, textEdge * k);
@@ -249,8 +282,14 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         // Skip GPU readback altogether in the full-colour introduction or while another scene covers it.
         const fade = (wide ? 1 : 1 - k * 0.92) * (1 - shown) * d;
         if (fade > 0.005) {
-          gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
-          gl.readRenderTargetPixels(rt, 0, 0, sampleW, sampleH, buf);
+          if (gl) {
+            gl.setRenderTarget(rt); gl.clear(); gl.render(scene, camera);
+            gl.readRenderTargetPixels(rt, 0, 0, sampleW, sampleH, buf as Uint8Array);
+          } else {
+            // Sample the still the same way, flipped so rows run bottom-up like a WebGL readback.
+            ssc.setTransform(sampleW / W, 0, 0, -sampleH / H, 0, sampleH); ssc.clearRect(0, 0, W, H);
+            drawStill(ssc); buf = ssc.getImageData(0, 0, sampleW, sampleH).data;
+          }
           ctx.globalAlpha = fade;
           for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
             const base = ((rows - r - 1) * SAMPLE * sampleW + c * SAMPLE) * 4;
