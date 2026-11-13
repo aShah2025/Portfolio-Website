@@ -87,6 +87,14 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
     const abort = new AbortController();
     const disposers: (() => void)[] = [];
     const cleanup = () => { while (disposers.length) disposers.pop()!(); };
+    // Paint the sky straight away, so the hero isn't blank paper while three.js and the model download.
+    let earlySky: HTMLCanvasElement | null = null;
+    if (window.scrollY < window.innerHeight) {
+      const w = window.innerWidth, h = window.innerHeight, r = Math.min(2, window.devicePixelRatio || 1);
+      earlySky = paintSky(w, h);
+      canvas.width = Math.round(w * r); canvas.height = Math.round(h * r);
+      ctx.setTransform(r, 0, 0, r, 0, 0); ctx.drawImage(earlySky, 0, 0, w, h);
+    }
 
     const initialise = async () => {
       const [THREE, { RoomEnvironment }] = await Promise.all([
@@ -186,7 +194,8 @@ export default function AsciiPlane({ stunt, focus }: { stunt: { current: number 
         scene2d.width = cols; scene2d.height = rows;
         artCanvas.width = canvas.width; artCanvas.height = canvas.height;
         camera.aspect = W / H; camera.updateProjectionMatrix();
-        sky = paintSky(W, H);
+        sky = earlySky && earlySky.width === W && earlySky.height === H ? earlySky : paintSky(W, H);
+        earlySky = null;
         readColors(); artReveal = -1; artLimit = -1;
       };
       resize();
